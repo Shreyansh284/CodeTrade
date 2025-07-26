@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 from utils.logging_config import get_logger
 from utils.error_handler import PatternDetectionError, safe_execute
+from utils.cache_manager import cache_manager
 
 logger = get_logger(__name__)
 
@@ -70,7 +71,7 @@ class BasePatternDetector(ABC):
     
     def detect(self, data: pd.DataFrame, timeframe: str = "1min") -> List[PatternResult]:
         """
-        Detect patterns in the provided OHLCV data with comprehensive error handling.
+        Detect patterns in the provided OHLCV data with comprehensive error handling and caching.
         
         Args:
             data: OHLCV DataFrame with columns [open, high, low, close, volume]
@@ -82,6 +83,21 @@ class BasePatternDetector(ABC):
         pattern_name = self.get_pattern_name()
         
         try:
+            # Generate cache key for pattern detection
+            try:
+                data_hash = pd.util.hash_pandas_object(data).sum()
+                cache_key = f"pattern_{pattern_name}_{data_hash}_{timeframe}_{self.min_confidence}"
+                
+                # Try to get from cache first
+                cached_patterns = cache_manager.get(cache_key)
+                if cached_patterns is not None:
+                    self.logger.info(f"Loaded {len(cached_patterns)} {pattern_name} patterns from cache")
+                    return cached_patterns
+                    
+            except Exception as e:
+                self.logger.warning(f"Error generating cache key for {pattern_name}: {e}")
+                cache_key = None
+            
             # Validate input data
             if not self._validate_data(data):
                 raise PatternDetectionError(
@@ -94,49 +110,24 @@ class BasePatternDetector(ABC):
                     }
                 )
             
-            patterns = []
-            detection_errors = []
-            
-            # Iterate through data to detect patterns
-            for i in range(len(data)):
+            # Use vectorized detection if available, otherwise fall back to iterative
+            if hasattr(self, '_detect_vectorized') and len(data) > 100:
                 try:
-                    confidence = safe_execute(
-                        self._detect_pattern_at_index,
-                        data, i,
-                        context=f"{pattern_name}_detection_at_{i}",
-                        fallback_result=None,
-                        show_errors=False
-                    )
-                    
-                    if confidence is not None and confidence >= self.min_confidence:
-                        try:
-                            pattern_result = PatternResult(
-                                datetime=data.index[i],
-                                pattern_type=pattern_name.lower().replace(' ', '_'),
-                                confidence=confidence,
-                                timeframe=timeframe,
-                                candle_index=i,
-                                description=self._get_pattern_description()
-                            )
-                            patterns.append(pattern_result)
-                            
-                        except Exception as e:
-                            detection_errors.append(f"Index {i}: Failed to create pattern result - {str(e)}")
-                            
+                    patterns = self._detect_vectorized(data, timeframe)
+                    self.logger.info(f"Used vectorized detection for {pattern_name}")
                 except Exception as e:
-                    detection_errors.append(f"Index {i}: Detection failed - {str(e)}")
-                    continue
+                    self.logger.warning(f"Vectorized detection failed for {pattern_name}, falling back to iterative: {e}")
+                    patterns = self._detect_iterative(data, timeframe)
+            else:
+                patterns = self._detect_iterative(data, timeframe)
             
-            # Log detection errors if any
-            if detection_errors:
-                self.logger.warning(
-                    f"{pattern_name} detection had {len(detection_errors)} errors: "
-                    f"{'; '.join(detection_errors[:3])}..."  # Show first 3 errors
-                )
+            # Cache the results
+            if cache_key and patterns is not None:
+                cache_manager.set(cache_key, patterns, ttl=600)  # 10 minutes cache
             
             self.logger.info(
                 f"Detected {len(patterns)} {pattern_name} patterns "
-                f"(scanned {len(data)} candles, {len(detection_errors)} errors)"
+                f"(scanned {len(data)} candles)"
             )
             
             return patterns
@@ -155,6 +146,60 @@ class BasePatternDetector(ABC):
                     'data_length': len(data) if data is not None else 0
                 }
             ) from e
+    
+    def _detect_iterative(self, data: pd.DataFrame, timeframe: str) -> List[PatternResult]:
+        """
+        Iterative pattern detection (fallback method).
+        
+        Args:
+            data: OHLCV DataFrame
+            timeframe: Time period of the data
+            
+        Returns:
+            List of detected patterns
+        """
+        pattern_name = self.get_pattern_name()
+        patterns = []
+        detection_errors = []
+        
+        # Iterate through data to detect patterns
+        for i in range(len(data)):
+            try:
+                confidence = safe_execute(
+                    self._detect_pattern_at_index,
+                    data, i,
+                    context=f"{pattern_name}_detection_at_{i}",
+                    fallback_result=None,
+                    show_errors=False
+                )
+                
+                if confidence is not None and confidence >= self.min_confidence:
+                    try:
+                        pattern_result = PatternResult(
+                            datetime=data.index[i],
+                            pattern_type=pattern_name.lower().replace(' ', '_'),
+                            confidence=confidence,
+                            timeframe=timeframe,
+                            candle_index=i,
+                            description=self._get_pattern_description()
+                        )
+                        patterns.append(pattern_result)
+                        
+                    except Exception as e:
+                        detection_errors.append(f"Index {i}: Failed to create pattern result - {str(e)}")
+                        
+            except Exception as e:
+                detection_errors.append(f"Index {i}: Detection failed - {str(e)}")
+                continue
+        
+        # Log detection errors if any
+        if detection_errors:
+            self.logger.warning(
+                f"{pattern_name} detection had {len(detection_errors)} errors: "
+                f"{'; '.join(detection_errors[:3])}..."  # Show first 3 errors
+            )
+        
+        return patterns
     
     def _validate_data(self, data: pd.DataFrame) -> bool:
         """
@@ -360,3 +405,83 @@ class BasePatternDetector(ABC):
         confidence = avg_score * (0.7 + 0.3 * min_score)
         
         return min(max(confidence, 0.0), 1.0)
+    
+    def _calculate_vectorized_components(self, data: pd.DataFrame) -> Dict[str, np.ndarray]:
+        """
+        Calculate vectorized candle components for all candles at once.
+        
+        Args:
+            data: OHLCV DataFrame
+            
+        Returns:
+            Dictionary with vectorized components
+        """
+        try:
+            # Calculate all components using vectorized operations
+            body_size = np.abs(data['close'] - data['open'])
+            upper_shadow = data['high'] - np.maximum(data['open'], data['close'])
+            lower_shadow = np.minimum(data['open'], data['close']) - data['low']
+            total_range = data['high'] - data['low']
+            
+            # Avoid division by zero
+            total_range = np.where(total_range == 0, np.finfo(float).eps, total_range)
+            body_size_safe = np.where(body_size == 0, np.finfo(float).eps, body_size)
+            
+            return {
+                'body_size': body_size,
+                'upper_shadow': upper_shadow,
+                'lower_shadow': lower_shadow,
+                'total_range': total_range,
+                'body_size_safe': body_size_safe,
+                'is_bullish': data['close'] > data['open'],
+                'is_bearish': data['close'] < data['open']
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating vectorized components: {e}")
+            return {}
+    
+    def _apply_vectorized_filters(self, mask: np.ndarray, data: pd.DataFrame, timeframe: str) -> List[PatternResult]:
+        """
+        Apply vectorized filters and create pattern results.
+        
+        Args:
+            mask: Boolean mask indicating where patterns are detected
+            data: Original OHLCV data
+            timeframe: Time period
+            
+        Returns:
+            List of pattern results
+        """
+        try:
+            pattern_name = self.get_pattern_name()
+            patterns = []
+            
+            # Get indices where patterns are detected
+            pattern_indices = np.where(mask)[0]
+            
+            for idx in pattern_indices:
+                try:
+                    # Calculate confidence for this specific pattern
+                    confidence = self._detect_pattern_at_index(data, idx)
+                    
+                    if confidence is not None and confidence >= self.min_confidence:
+                        pattern_result = PatternResult(
+                            datetime=data.index[idx],
+                            pattern_type=pattern_name.lower().replace(' ', '_'),
+                            confidence=confidence,
+                            timeframe=timeframe,
+                            candle_index=idx,
+                            description=self._get_pattern_description()
+                        )
+                        patterns.append(pattern_result)
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error creating pattern result at index {idx}: {e}")
+                    continue
+            
+            return patterns
+            
+        except Exception as e:
+            self.logger.error(f"Error applying vectorized filters: {e}")
+            return []

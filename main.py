@@ -232,12 +232,52 @@ def create_analysis_button(config: Dict[str, Any]) -> bool:
             f"**{selected_pattern_count}** pattern types"
         )
     
+    # Performance and cache management section
+    st.sidebar.subheader("⚡ Performance")
+    
+    # Show cache statistics
+    from utils.cache_manager import get_cache_stats, clear_cache
+    from utils.performance_monitor import check_performance_requirements
+    
+    cache_stats = get_cache_stats()
+    if cache_stats.get('total_requests', 0) > 0:
+        hit_rate = cache_stats.get('hit_rate', 0)
+        if hit_rate > 70:
+            st.sidebar.success(f"🚀 Cache: {hit_rate:.1f}% hit rate")
+        elif hit_rate > 30:
+            st.sidebar.info(f"📊 Cache: {hit_rate:.1f}% hit rate")
+        else:
+            st.sidebar.warning(f"🐌 Cache: {hit_rate:.1f}% hit rate")
+    
+    # Performance status
+    perf_status = check_performance_requirements()
+    if perf_status['status'] == 'good':
+        st.sidebar.success("✅ Performance: Good")
+    elif perf_status['status'] == 'warning':
+        st.sidebar.warning("⚠️ Performance: Some delays")
+    elif perf_status['status'] == 'poor':
+        st.sidebar.error("🐌 Performance: Needs optimization")
+    
+    # Cache management buttons
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button("🗑️ Clear Cache", help="Clear all cached data"):
+            if clear_cache():
+                st.sidebar.success("Cache cleared!")
+            else:
+                st.sidebar.error("Failed to clear cache")
+    
+    with col2:
+        if st.button("📊 Stats", help="Show detailed performance stats"):
+            st.session_state.show_perf_stats = not st.session_state.get('show_perf_stats', False)
+    
     return False
 
 
 def perform_pattern_analysis(config: Dict[str, Any]) -> None:
     """
-    Perform the pattern detection analysis with comprehensive error handling and progress indicators.
+    Perform the pattern detection analysis with comprehensive error handling, progress indicators,
+    and performance monitoring to ensure 30-second completion requirement.
     
     Args:
         config: Configuration dictionary with user selections
@@ -247,15 +287,18 @@ def perform_pattern_analysis(config: Dict[str, Any]) -> None:
         PatternDetectionError, safe_execute
     )
     from utils.logging_config import log_performance
+    from utils.performance_monitor import monitor_performance
+    from utils.cache_manager import get_cache_stats
     
-    analysis_start_time = time.time()
+    # Use performance monitoring with 30-second timeout
+    with monitor_performance("total_analysis", timeout=30, show_progress=True) as perf_context:
     
-    # Create progress indicators
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    error_container = st.empty()
-    
-    try:
+        # Create progress indicators
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        error_container = st.empty()
+        
+        try:
         # Validate configuration
         if not config or not config.get('instrument'):
             raise ValueError("Invalid configuration: missing instrument")
@@ -264,60 +307,77 @@ def perform_pattern_analysis(config: Dict[str, Any]) -> None:
         if not selected_patterns:
             raise ValueError("No patterns selected for detection")
         
-        # Step 1: Load data with error handling
-        status_text.text("📥 Loading instrument data...")
-        progress_bar.progress(10)
-        
-        try:
-            raw_data = st.session_state.data_loader.load_instrument_data(config['instrument'])
+            # Step 1: Load data with error handling and performance monitoring
+            status_text.text("📥 Loading instrument data...")
+            progress_bar.progress(10)
+            perf_context.add_checkpoint("data_loading_start")
             
-            if raw_data is None or raw_data.empty:
-                raise DataLoadingError(
-                    f"No data available for instrument '{config['instrument']}'",
-                    error_code="NO_INSTRUMENT_DATA",
-                    context={'instrument': config['instrument']}
+            try:
+                with monitor_performance("data_loading", timeout=10, show_progress=False) as load_context:
+                    raw_data = st.session_state.data_loader.load_instrument_data(config['instrument'])
+                    load_context.check_timeout()  # Check if we're still within timeout
+                
+                if raw_data is None or raw_data.empty:
+                    raise DataLoadingError(
+                        f"No data available for instrument '{config['instrument']}'",
+                        error_code="NO_INSTRUMENT_DATA",
+                        context={'instrument': config['instrument']}
+                    )
+                
+                perf_context.add_checkpoint("data_loading_complete", {'records': len(raw_data)})
+                logger.info(f"Loaded {len(raw_data)} records for {config['instrument']}")
+                
+            except (DataLoadingError, DataValidationError) as e:
+                error_handler.handle_error(e, "data_loading", show_user_message=True)
+                return
+            except TimeoutError as e:
+                st.error("⏱️ Data loading timed out. Try selecting a different instrument or check data files.")
+                return
+            except Exception as e:
+                error_handler.handle_error(
+                    DataLoadingError(f"Unexpected error loading data: {str(e)}", "UNEXPECTED_LOAD_ERROR"),
+                    "data_loading", show_user_message=True
                 )
-            
-            logger.info(f"Loaded {len(raw_data)} records for {config['instrument']}")
-            
-        except (DataLoadingError, DataValidationError) as e:
-            error_handler.handle_error(e, "data_loading", show_user_message=True)
-            return
-        except Exception as e:
-            error_handler.handle_error(
-                DataLoadingError(f"Unexpected error loading data: {str(e)}", "UNEXPECTED_LOAD_ERROR"),
-                "data_loading", show_user_message=True
-            )
-            return
+                return
         
-        # Step 2: Aggregate data with error handling
-        status_text.text(f"⚙️ Aggregating data to {config['timeframe']} timeframe...")
-        progress_bar.progress(30)
-        
-        try:
-            aggregated_data = st.session_state.data_aggregator.aggregate_data(raw_data, config['timeframe'])
+            # Step 2: Aggregate data with error handling and performance monitoring
+            status_text.text(f"⚙️ Aggregating data to {config['timeframe']} timeframe...")
+            progress_bar.progress(30)
+            perf_context.add_checkpoint("aggregation_start")
             
-            if aggregated_data is None or aggregated_data.empty:
-                raise DataValidationError(
-                    f"Data aggregation to {config['timeframe']} produced no results",
-                    error_code="AGGREGATION_NO_RESULTS",
-                    context={
-                        'timeframe': config['timeframe'],
-                        'input_records': len(raw_data)
-                    }
+            try:
+                with monitor_performance("data_aggregation", timeout=5, show_progress=False) as agg_context:
+                    aggregated_data = st.session_state.data_aggregator.aggregate_data(raw_data, config['timeframe'])
+                    agg_context.check_timeout()
+                
+                if aggregated_data is None or aggregated_data.empty:
+                    raise DataValidationError(
+                        f"Data aggregation to {config['timeframe']} produced no results",
+                        error_code="AGGREGATION_NO_RESULTS",
+                        context={
+                            'timeframe': config['timeframe'],
+                            'input_records': len(raw_data)
+                        }
+                    )
+                
+                perf_context.add_checkpoint("aggregation_complete", {
+                    'input_records': len(raw_data),
+                    'output_records': len(aggregated_data)
+                })
+                logger.info(f"Aggregated to {len(aggregated_data)} {config['timeframe']} candles")
+                
+            except DataValidationError as e:
+                error_handler.handle_error(e, "data_aggregation", show_user_message=True)
+                return
+            except TimeoutError as e:
+                st.error("⏱️ Data aggregation timed out. Try using a longer timeframe or smaller dataset.")
+                return
+            except Exception as e:
+                error_handler.handle_error(
+                    DataValidationError(f"Unexpected error during aggregation: {str(e)}", "UNEXPECTED_AGGREGATION_ERROR"),
+                    "data_aggregation", show_user_message=True
                 )
-            
-            logger.info(f"Aggregated to {len(aggregated_data)} {config['timeframe']} candles")
-            
-        except DataValidationError as e:
-            error_handler.handle_error(e, "data_aggregation", show_user_message=True)
-            return
-        except Exception as e:
-            error_handler.handle_error(
-                DataValidationError(f"Unexpected error during aggregation: {str(e)}", "UNEXPECTED_AGGREGATION_ERROR"),
-                "data_aggregation", show_user_message=True
-            )
-            return
+                return
         
         # Prepare data for pattern detection
         try:
@@ -344,56 +404,66 @@ def perform_pattern_analysis(config: Dict[str, Any]) -> None:
             )
             return
         
-        # Step 3: Detect patterns with comprehensive error handling
-        status_text.text("🔍 Detecting patterns...")
-        progress_bar.progress(50)
-        
-        all_patterns = []
-        pattern_errors = []
-        selected_detectors = [
-            (name, detector) for name, detector in PATTERN_DETECTORS.items()
-            if config['patterns'].get(name, False)
-        ]
-        
-        for i, (pattern_name, detector) in enumerate(selected_detectors):
+            # Step 3: Detect patterns with comprehensive error handling and performance monitoring
+            status_text.text("🔍 Detecting patterns...")
+            progress_bar.progress(50)
+            perf_context.add_checkpoint("pattern_detection_start")
+            
+            all_patterns = []
+            pattern_errors = []
+            selected_detectors = [
+                (name, detector) for name, detector in PATTERN_DETECTORS.items()
+                if config['patterns'].get(name, False)
+            ]
+            
             try:
-                # Update progress
-                detection_progress = 50 + (40 * i / len(selected_detectors))
-                progress_bar.progress(int(detection_progress))
-                status_text.text(f"🔍 Detecting {pattern_name} patterns...")
-                
-                # Detect patterns with timeout protection
-                pattern_start_time = time.time()
-                patterns = safe_execute(
-                    detector.detect,
-                    pattern_data,
-                    config['timeframe'],
-                    context=f"detect_{pattern_name}",
-                    fallback_result=[],
-                    show_errors=False
-                )
-                
-                pattern_duration = time.time() - pattern_start_time
-                
-                if patterns is None:
-                    patterns = []
-                    pattern_errors.append(f"{pattern_name}: Detection returned None")
-                elif pattern_duration > 10.0:  # Log slow pattern detection
-                    log_performance(f"detect_{pattern_name}", pattern_duration, config['timeframe'])
-                
-                all_patterns.extend(patterns)
-                
-                # Update status
-                status_text.text(f"🔍 Found {len(patterns)} {pattern_name} patterns...")
-                logger.info(f"Detected {len(patterns)} {pattern_name} patterns in {pattern_duration:.2f}s")
-                
-            except Exception as e:
-                error_msg = f"Error detecting {pattern_name} patterns: {str(e)}"
-                pattern_errors.append(f"{pattern_name}: {str(e)[:100]}...")
-                logger.error(error_msg)
-                
-                # Show warning but continue with other patterns
-                error_container.warning(f"⚠️ {error_msg}")
+                with monitor_performance("pattern_detection", timeout=15, show_progress=False) as detect_context:
+                    for i, (pattern_name, detector) in enumerate(selected_detectors):
+                        try:
+                            # Check timeout before each pattern
+                            detect_context.check_timeout()
+                            
+                            # Update progress
+                            detection_progress = 50 + (40 * i / len(selected_detectors))
+                            progress_bar.progress(int(detection_progress))
+                            status_text.text(f"🔍 Detecting {pattern_name} patterns...")
+                            
+                            # Detect patterns with individual timeout
+                            pattern_start_time = time.time()
+                            patterns = safe_execute(
+                                detector.detect,
+                                pattern_data,
+                                config['timeframe'],
+                                context=f"detect_{pattern_name}",
+                                fallback_result=[],
+                                show_errors=False
+                            )
+                            
+                            pattern_duration = time.time() - pattern_start_time
+                            
+                            if patterns is None:
+                                patterns = []
+                                pattern_errors.append(f"{pattern_name}: Detection returned None")
+                            elif pattern_duration > 5.0:  # Log slow pattern detection
+                                log_performance(f"detect_{pattern_name}", pattern_duration, config['timeframe'])
+                            
+                            all_patterns.extend(patterns)
+                            
+                            # Update status
+                            status_text.text(f"🔍 Found {len(patterns)} {pattern_name} patterns...")
+                            logger.info(f"Detected {len(patterns)} {pattern_name} patterns in {pattern_duration:.2f}s")
+                            
+                        except Exception as e:
+                            error_msg = f"Error detecting {pattern_name} patterns: {str(e)}"
+                            pattern_errors.append(f"{pattern_name}: {str(e)[:100]}...")
+                            logger.error(error_msg)
+                            
+                            # Show warning but continue with other patterns
+                            error_container.warning(f"⚠️ {error_msg}")
+                            
+            except TimeoutError as e:
+                st.error("⏱️ Pattern detection timed out. Try reducing the number of selected patterns or using a smaller dataset.")
+                return
         
         # Step 4: Validate and complete analysis
         status_text.text("✅ Finalizing analysis...")
@@ -428,47 +498,64 @@ def perform_pattern_analysis(config: Dict[str, Any]) -> None:
         st.session_state.current_data = aggregated_data
         st.session_state.analysis_complete = True
         
-        # Calculate and log total analysis time
-        total_duration = time.time() - analysis_start_time
-        log_performance("complete_pattern_analysis", total_duration, 
-                       f"{config['instrument']}_{config['timeframe']}")
-        
-        # Clear progress indicators
-        progress_bar.empty()
-        status_text.empty()
-        error_container.empty()
-        
-        # Show success message with details
-        success_msg = f"🎉 Analysis complete! Found {len(valid_patterns)} patterns in {config['instrument']}"
-        if pattern_errors:
-            success_msg += f" (with {len(pattern_errors)} detector warnings)"
-        
-        st.success(success_msg)
-        
-        # Show analysis summary
-        if valid_patterns:
-            pattern_summary = {}
-            for pattern in valid_patterns:
-                pattern_type = pattern.pattern_type.replace('_', ' ').title()
-                pattern_summary[pattern_type] = pattern_summary.get(pattern_type, 0) + 1
+            perf_context.add_checkpoint("pattern_detection_complete", {
+                'total_patterns': len(all_patterns),
+                'valid_patterns': len(valid_patterns),
+                'pattern_errors': len(pattern_errors)
+            })
             
-            summary_text = ", ".join([f"{count} {pattern}" for pattern, count in pattern_summary.items()])
-            st.info(f"📊 Pattern breakdown: {summary_text}")
-        
-    except Exception as e:
-        # Handle unexpected errors in the analysis process
-        error_handler.handle_error(
-            PatternDetectionError(f"Unexpected error during pattern analysis: {str(e)}", "ANALYSIS_UNEXPECTED_ERROR"),
-            "pattern_analysis", show_user_message=True
-        )
-        
-        # Clear progress indicators on error
-        try:
+            # Complete analysis
+            progress_bar.progress(100)
+            status_text.text("✅ Analysis complete!")
+            
+            # Store results in session state
+            st.session_state.pattern_results = valid_patterns
+            st.session_state.current_data = aggregated_data
+            st.session_state.analysis_complete = True
+            
+            # Clear progress indicators
             progress_bar.empty()
             status_text.empty()
             error_container.empty()
-        except:
-            pass
+            
+            # Show success message with performance info
+            total_duration = perf_context.get_elapsed_time()
+            success_msg = f"🎉 Analysis complete! Found {len(valid_patterns)} patterns in {config['instrument']} ({total_duration:.1f}s)"
+            if pattern_errors:
+                success_msg += f" (with {len(pattern_errors)} detector warnings)"
+            
+            st.success(success_msg)
+            
+            # Show analysis summary
+            if valid_patterns:
+                pattern_summary = {}
+                for pattern in valid_patterns:
+                    pattern_type = pattern.pattern_type.replace('_', ' ').title()
+                    pattern_summary[pattern_type] = pattern_summary.get(pattern_type, 0) + 1
+                
+                summary_text = ", ".join([f"{count} {pattern}" for pattern, count in pattern_summary.items()])
+                st.info(f"📊 Pattern breakdown: {summary_text}")
+            
+            # Show cache statistics if performance was good
+            if total_duration < 15.0:  # Show cache stats for fast operations
+                cache_stats = get_cache_stats()
+                if cache_stats.get('hit_rate', 0) > 0:
+                    st.caption(f"🚀 Cache hit rate: {cache_stats['hit_rate']:.1f}% (performance boost enabled)")
+            
+        except Exception as e:
+            # Handle unexpected errors in the analysis process
+            error_handler.handle_error(
+                PatternDetectionError(f"Unexpected error during pattern analysis: {str(e)}", "ANALYSIS_UNEXPECTED_ERROR"),
+                "pattern_analysis", show_user_message=True
+            )
+            
+            # Clear progress indicators on error
+            try:
+                progress_bar.empty()
+                status_text.empty()
+                error_container.empty()
+            except:
+                pass
 
 
 def display_main_content(config: Dict[str, Any]) -> None:
@@ -484,6 +571,10 @@ def display_main_content(config: Dict[str, Any]) -> None:
     Analyze historical stock data to detect candlestick patterns. Select an instrument, 
     timeframe, and patterns from the sidebar, then click **Start Analysis** to begin.
     """)
+    
+    # Show performance statistics if requested
+    if st.session_state.get('show_perf_stats', False):
+        display_performance_statistics()
     
     if not config:
         st.info("👈 Please configure analysis settings in the sidebar to get started.")
@@ -756,6 +847,107 @@ def display_pattern_results_table(patterns: List[PatternResult], data: pd.DataFr
     except Exception as e:
         logger.error(f"Error displaying pattern results table: {e}")
         st.error(f"❌ Error displaying results table: {str(e)}")
+
+
+def display_performance_statistics() -> None:
+    """Display detailed performance statistics and cache information."""
+    try:
+        from utils.performance_monitor import get_performance_monitor
+        from utils.cache_manager import get_cache_stats
+        
+        st.subheader("📊 Performance Statistics")
+        
+        # Get performance data
+        perf_monitor = get_performance_monitor()
+        perf_summary = perf_monitor.get_performance_summary()
+        cache_stats = get_cache_stats()
+        
+        # Performance overview
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            total_ops = perf_summary.get('total_operations', 0)
+            st.metric("Total Operations", total_ops)
+        
+        with col2:
+            success_rate = perf_summary.get('success_rate', 0)
+            st.metric("Success Rate", f"{success_rate:.1f}%")
+        
+        with col3:
+            cache_hit_rate = cache_stats.get('hit_rate', 0)
+            st.metric("Cache Hit Rate", f"{cache_hit_rate:.1f}%")
+        
+        with col4:
+            active_ops = perf_summary.get('active_operations', 0)
+            st.metric("Active Operations", active_ops)
+        
+        # Detailed statistics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🚀 Operation Performance")
+            operation_stats = perf_summary.get('operation_stats', {})
+            
+            if operation_stats:
+                for op_name, stats in operation_stats.items():
+                    threshold = perf_monitor.thresholds.get(op_name, 30.0)
+                    avg_duration = stats['avg_duration']
+                    
+                    # Color code based on performance
+                    if avg_duration <= threshold:
+                        status = "✅"
+                    elif avg_duration <= threshold * 1.5:
+                        status = "⚠️"
+                    else:
+                        status = "🐌"
+                    
+                    st.write(f"{status} **{op_name}**: {avg_duration:.2f}s avg (threshold: {threshold:.1f}s)")
+                    st.write(f"   Count: {stats['count']}, Success: {stats['success_rate']:.1f}%")
+            else:
+                st.info("No performance data available yet.")
+        
+        with col2:
+            st.subheader("💾 Cache Statistics")
+            
+            if cache_stats.get('total_requests', 0) > 0:
+                st.write(f"**Total Requests**: {cache_stats['total_requests']:,}")
+                st.write(f"**Cache Hits**: {cache_stats['hits']:,}")
+                st.write(f"**Cache Misses**: {cache_stats['misses']:,}")
+                st.write(f"**Memory Hits**: {cache_stats['memory_hits']:,}")
+                st.write(f"**Disk Hits**: {cache_stats['disk_hits']:,}")
+                st.write(f"**Memory Cache Size**: {cache_stats['memory_cache_size']} items")
+                st.write(f"**Disk Cache Files**: {cache_stats['disk_cache_files']} files")
+                
+                if cache_stats.get('disk_cache_size_bytes', 0) > 0:
+                    size_mb = cache_stats['disk_cache_size_bytes'] / (1024 * 1024)
+                    st.write(f"**Disk Cache Size**: {size_mb:.1f} MB")
+            else:
+                st.info("No cache statistics available yet.")
+        
+        # Performance recommendations
+        slowest_ops = perf_summary.get('slowest_operations', [])
+        if slowest_ops:
+            st.subheader("🔧 Performance Recommendations")
+            
+            for op_name, stats in slowest_ops[:3]:  # Show top 3 slowest
+                threshold = perf_monitor.thresholds.get(op_name, 30.0)
+                if stats['avg_duration'] > threshold:
+                    st.warning(f"**{op_name}** is slower than expected ({stats['avg_duration']:.2f}s vs {threshold:.1f}s threshold)")
+                    
+                    # Show specific recommendations
+                    suggestions = perf_monitor.optimization_suggestions.get(op_name, [])
+                    if suggestions:
+                        for suggestion in suggestions[:2]:  # Show top 2 suggestions
+                            st.write(f"• {suggestion}")
+        
+        # Clear statistics button
+        if st.button("🗑️ Clear Performance History"):
+            perf_monitor.clear_history()
+            st.success("Performance history cleared!")
+            st.experimental_rerun()
+            
+    except Exception as e:
+        st.error(f"Error displaying performance statistics: {e}")
 
 
 def display_selected_pattern_details(pattern: PatternResult, data: pd.DataFrame) -> None:

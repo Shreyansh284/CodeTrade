@@ -6,6 +6,7 @@ into different timeframes using OHLCV aggregation rules with comprehensive error
 """
 
 import time
+import hashlib
 from typing import Dict, Optional
 import pandas as pd
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from utils.logging_config import get_logger
 from utils.error_handler import (
     DataValidationError, with_error_handling, error_handler, safe_execute
 )
+from utils.cache_manager import cache_manager
 
 logger = get_logger(__name__)
 
@@ -53,7 +55,7 @@ class DataAggregator:
     
     def aggregate_data(self, data: pd.DataFrame, timeframe: str) -> Optional[pd.DataFrame]:
         """
-        Aggregate minute-level data to specified timeframe.
+        Aggregate minute-level data to specified timeframe with caching.
         
         Args:
             data: DataFrame with minute-level OHLCV data
@@ -63,6 +65,22 @@ class DataAggregator:
             Aggregated DataFrame or None if error
         """
         start_time = time.time()
+        
+        # Generate cache key based on data hash and timeframe
+        try:
+            data_hash = hashlib.md5(pd.util.hash_pandas_object(data).values).hexdigest()[:16]
+            cache_key = f"aggregated_data_{data_hash}_{timeframe}"
+            
+            # Try to get from cache first
+            cached_result = cache_manager.get(cache_key)
+            if cached_result is not None:
+                cache_time = time.time() - start_time
+                logger.info(f"Loaded aggregated {timeframe} data from cache in {cache_time:.3f}s")
+                return cached_result
+                
+        except Exception as e:
+            logger.warning(f"Error generating cache key for aggregation: {e}")
+            cache_key = None
         
         try:
             # Validate timeframe
@@ -163,13 +181,17 @@ class DataAggregator:
             # Clear progress indicator
             progress_placeholder.empty()
             
+            # Cache the result for future use
+            if cache_key:
+                cache_manager.set(cache_key, aggregated, ttl=900)  # 15 minutes cache
+            
             # Log performance and results
             duration = time.time() - start_time
             compression_ratio = len(data) / len(aggregated) if len(aggregated) > 0 else 0
             
             logger.info(
                 f"Successfully aggregated {len(data)} records to {len(aggregated)} {timeframe} candles "
-                f"(compression: {compression_ratio:.1f}x) in {duration:.2f}s"
+                f"(compression: {compression_ratio:.1f}x) in {duration:.2f}s (cached)"
             )
             
             return aggregated

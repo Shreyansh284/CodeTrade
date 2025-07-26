@@ -64,6 +64,7 @@ class ChartRenderer:
     ) -> go.Figure:
         """
         Create an interactive candlestick chart with optional volume subplot.
+        Optimized for large datasets with intelligent sampling.
         
         Args:
             data: OHLCV DataFrame with datetime index
@@ -84,6 +85,12 @@ class ChartRenderer:
             if not all(col in data.columns for col in required_cols):
                 logger.error(f"Missing required OHLC columns in data")
                 return self._create_empty_chart(title, height)
+            
+            # Optimize data for large datasets
+            optimized_data = self._optimize_data_for_rendering(data)
+            if optimized_data is not data:
+                logger.info(f"Optimized chart data from {len(data)} to {len(optimized_data)} points")
+                data = optimized_data
             
             # Create subplots if volume is requested
             if show_volume and 'volume' in data.columns:
@@ -628,6 +635,69 @@ class ChartRenderer:
         except Exception as e:
             logger.error(f"Error creating navigation interface: {e}")
             return {'patterns': [], 'timeline': None, 'summary': None}
+    
+    def _optimize_data_for_rendering(self, data: pd.DataFrame, max_points: int = 2000) -> pd.DataFrame:
+        """
+        Optimize data for chart rendering by intelligent sampling for large datasets.
+        
+        Args:
+            data: Original OHLCV data
+            max_points: Maximum number of points to render
+            
+        Returns:
+            Optimized DataFrame for rendering
+        """
+        try:
+            if len(data) <= max_points:
+                return data
+            
+            logger.info(f"Optimizing chart data: {len(data)} points -> max {max_points} points")
+            
+            # Use intelligent sampling that preserves important price movements
+            # Strategy: Keep more points where price volatility is high
+            
+            # Calculate price volatility (high-low range as percentage of close)
+            volatility = (data['high'] - data['low']) / data['close']
+            volatility = volatility.fillna(0)
+            
+            # Calculate volume spikes (volume above average)
+            avg_volume = data['volume'].mean()
+            volume_spike = data['volume'] / avg_volume
+            volume_spike = volume_spike.fillna(1)
+            
+            # Combine volatility and volume for importance score
+            importance = volatility * 0.7 + (volume_spike - 1) * 0.3
+            importance = importance.fillna(0)
+            
+            # Always keep first and last points
+            keep_indices = {0, len(data) - 1}
+            
+            # Sample based on importance, keeping high-importance points
+            remaining_points = max_points - 2  # Account for first and last
+            
+            if remaining_points > 0:
+                # Sort by importance and keep top points
+                importance_sorted = importance.argsort()[::-1]
+                top_indices = importance_sorted[:remaining_points]
+                keep_indices.update(top_indices)
+            
+            # Convert to sorted list
+            keep_indices = sorted(list(keep_indices))
+            
+            # Return optimized data
+            optimized_data = data.iloc[keep_indices].copy()
+            
+            logger.debug(f"Chart optimization: kept {len(optimized_data)} of {len(data)} points")
+            return optimized_data
+            
+        except Exception as e:
+            logger.warning(f"Error optimizing chart data: {e}")
+            # Fallback to simple sampling
+            try:
+                step = max(1, len(data) // max_points)
+                return data.iloc[::step].copy()
+            except Exception:
+                return data
     
     def enable_pattern_click_navigation(
         self, 

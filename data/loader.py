@@ -18,6 +18,7 @@ from utils.error_handler import (
     DataLoadingError, DataValidationError, with_error_handling,
     error_handler, safe_execute
 )
+from utils.cache_manager import cache_manager, cached_function
 
 logger = get_logger(__name__)
 
@@ -94,6 +95,7 @@ class CSVLoader:
     def load_instrument_data(self, instrument: str) -> Optional[pd.DataFrame]:
         """
         Load all CSV files for a specific instrument and combine into single DataFrame.
+        Uses caching to avoid reloading unchanged data.
         
         Args:
             instrument: Name of the instrument (folder name)
@@ -102,6 +104,39 @@ class CSVLoader:
             Combined DataFrame with all data for the instrument, or None if error
         """
         start_time = time.time()
+        
+        # Generate cache key for this instrument
+        cache_key = f"instrument_data_{instrument}_{self.data_directory.name}"
+        
+        # Get list of CSV files for cache invalidation
+        instrument_path = self.data_directory / instrument
+        source_files = []
+        if instrument_path.exists():
+            source_files = [str(f) for f in instrument_path.glob("*.csv")]
+        
+        # Try to get from cache first
+        cached_data = cache_manager.get(cache_key)
+        if cached_data is not None:
+            # Verify cache is still valid by checking file modification times
+            cache_valid = True
+            try:
+                cache_path = cache_manager._get_file_cache_path(cache_key)
+                if cache_path.exists():
+                    cache_mtime = cache_path.stat().st_mtime
+                    for source_file in source_files:
+                        if Path(source_file).stat().st_mtime > cache_mtime:
+                            cache_valid = False
+                            break
+            except Exception:
+                cache_valid = False
+            
+            if cache_valid:
+                cache_time = time.time() - start_time
+                logger.info(f"Loaded {instrument} from cache in {cache_time:.3f}s ({len(cached_data)} records)")
+                return cached_data
+            else:
+                # Invalidate stale cache
+                cache_manager.invalidate(cache_key)
         
         try:
             # Validate input
@@ -206,11 +241,19 @@ class CSVLoader:
                     issues[:5]  # Show first 5 issues
                 )
             
+            # Cache the result for future use
+            cache_manager.set(
+                cache_key, 
+                combined_df, 
+                ttl=1800,  # 30 minutes cache
+                source_files=source_files
+            )
+            
             # Log performance
             duration = time.time() - start_time
             logger.info(
                 f"Successfully loaded {len(combined_df)} records for {instrument} "
-                f"from {len(dataframes)}/{len(csv_files)} files in {duration:.2f}s"
+                f"from {len(dataframes)}/{len(csv_files)} files in {duration:.2f}s (cached)"
             )
             
             return combined_df

@@ -1,10 +1,11 @@
 """
-Dragonfly Doji pattern detector implementation.
+Dragonfly Doji pattern detector implementation with vectorized operations.
 """
 
-from typing import Optional
+from typing import Optional, List
 import pandas as pd
-from .base import BasePatternDetector
+import numpy as np
+from .base import BasePatternDetector, PatternResult
 
 
 class DragonflyDojiDetector(BasePatternDetector):
@@ -107,6 +108,65 @@ class DragonflyDojiDetector(BasePatternDetector):
             criteria_scores.append(0.3)
         
         return self.calculate_confidence_score(criteria_scores)
+    
+    def _detect_vectorized(self, data: pd.DataFrame, timeframe: str) -> List[PatternResult]:
+        """
+        Vectorized detection of Dragonfly Doji patterns.
+        
+        Args:
+            data: OHLCV DataFrame
+            timeframe: Time period
+            
+        Returns:
+            List of detected patterns
+        """
+        try:
+            # Calculate vectorized components
+            components = self._calculate_vectorized_components(data)
+            if not components:
+                return self._detect_iterative(data, timeframe)
+            
+            body_size = components['body_size']
+            upper_shadow = components['upper_shadow']
+            lower_shadow = components['lower_shadow']
+            total_range = components['total_range']
+            
+            # Vectorized criteria checks
+            # Criterion 1: Small body (<5% of total range)
+            body_ratio = body_size / total_range
+            small_body_mask = body_ratio <= 0.15  # Allow up to 15% for vectorized detection
+            
+            # Criterion 2: Long lower shadow
+            # For perfect doji (body_size == 0), check lower shadow > 60% of total range
+            # For small body, check lower shadow > 2x body size
+            perfect_doji_mask = (body_size < total_range * 0.01) & (lower_shadow > total_range * 0.4)
+            small_body_mask_valid = (body_size >= total_range * 0.01) & (lower_shadow > body_size * 2.0)
+            long_lower_shadow_mask = perfect_doji_mask | small_body_mask_valid
+            
+            # Criterion 3: Minimal upper shadow (<20% of lower shadow for vectorized)
+            # Avoid division by zero
+            lower_shadow_safe = np.where(lower_shadow == 0, np.finfo(float).eps, lower_shadow)
+            upper_shadow_ratio = upper_shadow / lower_shadow_safe
+            minimal_upper_shadow_mask = upper_shadow_ratio <= 0.20
+            
+            # Criterion 4: Lower shadow should be significant portion of total range (>30%)
+            lower_shadow_range_ratio = lower_shadow / total_range
+            significant_lower_shadow_mask = lower_shadow_range_ratio >= 0.30
+            
+            # Combine all criteria
+            dragonfly_doji_mask = (
+                small_body_mask &
+                long_lower_shadow_mask &
+                minimal_upper_shadow_mask &
+                significant_lower_shadow_mask
+            )
+            
+            # Apply filters and create pattern results
+            return self._apply_vectorized_filters(dragonfly_doji_mask, data, timeframe)
+            
+        except Exception as e:
+            self.logger.warning(f"Vectorized Dragonfly Doji detection failed: {e}")
+            return self._detect_iterative(data, timeframe)
     
     def _get_pattern_description(self) -> str:
         """Get pattern description."""

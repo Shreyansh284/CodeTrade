@@ -1,10 +1,11 @@
 """
-Hammer pattern detector implementation.
+Hammer pattern detector implementation with vectorized operations.
 """
 
-from typing import Optional
+from typing import Optional, List
 import pandas as pd
-from .base import BasePatternDetector
+import numpy as np
+from .base import BasePatternDetector, PatternResult
 
 
 class HammerDetector(BasePatternDetector):
@@ -157,6 +158,76 @@ class HammerDetector(BasePatternDetector):
             return 0.6
         else:
             return 0.3
+    
+    def _detect_vectorized(self, data: pd.DataFrame, timeframe: str) -> List[PatternResult]:
+        """
+        Vectorized detection of Hammer patterns.
+        
+        Args:
+            data: OHLCV DataFrame
+            timeframe: Time period
+            
+        Returns:
+            List of detected patterns
+        """
+        try:
+            # Need at least 3 periods for downtrend check
+            if len(data) < 3:
+                return self._detect_iterative(data, timeframe)
+            
+            # Calculate vectorized components
+            components = self._calculate_vectorized_components(data)
+            if not components:
+                return self._detect_iterative(data, timeframe)
+            
+            body_size = components['body_size']
+            upper_shadow = components['upper_shadow']
+            lower_shadow = components['lower_shadow']
+            total_range = components['total_range']
+            body_size_safe = components['body_size_safe']
+            
+            # Vectorized criteria checks
+            # Criterion 1: Lower shadow >2x body size
+            lower_shadow_ratio = lower_shadow / body_size_safe
+            long_lower_shadow_mask = lower_shadow_ratio >= 2.0
+            
+            # Criterion 2: Upper shadow <50% of body size
+            upper_shadow_ratio = upper_shadow / body_size_safe
+            short_upper_shadow_mask = upper_shadow_ratio <= 0.5
+            
+            # Criterion 3: Body in upper 1/3 of total range
+            body_position = (np.minimum(data['open'], data['close']) - data['low']) / total_range
+            upper_body_mask = body_position >= 0.33
+            
+            # Criterion 4: Body size should be reasonable (not too small)
+            body_range_ratio = body_size / total_range
+            reasonable_body_mask = body_range_ratio >= 0.05
+            
+            # Criterion 5: Vectorized downtrend check (simplified)
+            # Check if previous 2 candles show declining trend
+            downtrend_mask = np.zeros(len(data), dtype=bool)
+            if len(data) >= 3:
+                # Simple downtrend: previous close < close before that
+                prev_declining = np.roll(data['close'], 1) < np.roll(data['close'], 2)
+                # Current candle should be after some decline
+                recent_decline = data['close'] < np.roll(data['close'], 1)
+                downtrend_mask[2:] = (prev_declining & recent_decline)[2:]
+            
+            # Combine all criteria
+            hammer_mask = (
+                long_lower_shadow_mask &
+                short_upper_shadow_mask &
+                upper_body_mask &
+                reasonable_body_mask &
+                downtrend_mask
+            )
+            
+            # Apply filters and create pattern results
+            return self._apply_vectorized_filters(hammer_mask, data, timeframe)
+            
+        except Exception as e:
+            self.logger.warning(f"Vectorized Hammer detection failed: {e}")
+            return self._detect_iterative(data, timeframe)
     
     def _get_pattern_description(self) -> str:
         """Get pattern description."""
