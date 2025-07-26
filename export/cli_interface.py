@@ -129,7 +129,10 @@ class CommandLineInterface:
             print("\n⏰ Available Timeframes:")
             print("=" * 30)
             
-            for i, timeframe in enumerate(self.timeframes, 1):
+            # Add "All Timeframes" option
+            print("1. All Timeframes (process all)")
+            
+            for i, timeframe in enumerate(self.timeframes, 2):
                 print(f"{i}. {timeframe}")
             
             print("0. Cancel")
@@ -137,19 +140,22 @@ class CommandLineInterface:
             
             while True:
                 try:
-                    choice = input(f"\nSelect timeframe (1-{len(self.timeframes)}): ")
+                    choice = input(f"\nSelect timeframe (1-{len(self.timeframes) + 1}): ")
                     
                     if choice == '0':
                         print("Operation cancelled.")
                         return None
                     
                     choice_num = int(choice)
-                    if 1 <= choice_num <= len(self.timeframes):
-                        selected = self.timeframes[choice_num - 1]
+                    if choice_num == 1:
+                        print("✅ Selected: All Timeframes")
+                        return "all"
+                    elif 2 <= choice_num <= len(self.timeframes) + 1:
+                        selected = self.timeframes[choice_num - 2]
                         print(f"✅ Selected: {selected}")
                         return selected
                     else:
-                        print(f"❌ Please enter a number between 1 and {len(self.timeframes)}")
+                        print(f"❌ Please enter a number between 1 and {len(self.timeframes) + 1}")
                         
                 except ValueError:
                     print("❌ Please enter a valid number")
@@ -358,8 +364,8 @@ class CommandLineInterface:
                 return
             
             # Select timeframe
-            timeframe = self.prompt_timeframe_selection()
-            if not timeframe:
+            timeframe_selection = self.prompt_timeframe_selection()
+            if not timeframe_selection:
                 return
             
             # Select patterns
@@ -367,12 +373,27 @@ class CommandLineInterface:
             if not selected_patterns:
                 return
             
-            # Run analysis and export
-            export_path = self.run_analysis_and_export(instrument, timeframe, selected_patterns)
+            # Determine timeframes to process
+            if timeframe_selection == "all":
+                timeframes_to_process = self.timeframes
+                print(f"\n🔄 Processing all timeframes: {', '.join(timeframes_to_process)}")
+            else:
+                timeframes_to_process = [timeframe_selection]
             
-            if export_path:
+            # Run analysis for each timeframe
+            export_paths = []
+            for i, timeframe in enumerate(timeframes_to_process, 1):
+                print(f"\n[{i}/{len(timeframes_to_process)}] Processing {timeframe}...")
+                export_path = self.run_analysis_and_export(instrument, timeframe, selected_patterns)
+                if export_path:
+                    export_paths.append(export_path)
+            
+            # Summary
+            if export_paths:
                 print(f"\n🎉 Analysis completed successfully!")
-                print(f"📁 Results saved to: {export_path}")
+                print(f"📁 Generated {len(export_paths)} export files:")
+                for path in export_paths:
+                    print(f"   • {path}")
             else:
                 print(f"\n❌ Analysis failed. Check the logs for details.")
                 

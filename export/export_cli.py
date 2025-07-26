@@ -55,15 +55,33 @@ Examples:
     parser.add_argument(
         '--timeframe',
         type=str,
-        choices=['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day'],
+        choices=['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day', 'all'],
         default='5min',
-        help='Timeframe for analysis (default: 5min)'
+        help='Timeframe for analysis or "all" for all timeframes (default: 5min)'
+    )
+    
+    parser.add_argument(
+        '--all-timeframes',
+        action='store_true',
+        help='Process all available timeframes (same as --timeframe all)'
     )
     
     parser.add_argument(
         '--patterns',
         type=str,
         help='Comma-separated list of patterns to detect (e.g., hammer,doji,rising_window)'
+    )
+    
+    parser.add_argument(
+        '--all-instruments',
+        action='store_true',
+        help='Process all available instruments (same as --batch)'
+    )
+    
+    parser.add_argument(
+        '--parallel',
+        action='store_true',
+        help='Enable parallel processing for batch operations (experimental)'
     )
     
     parser.add_argument(
@@ -249,30 +267,56 @@ def main():
         else:
             patterns = list(cli.pattern_detectors.keys())
         
-        # Run appropriate mode
-        if args.batch:
-            # Batch mode
-            exported_files = run_batch_export(cli, args.timeframe, patterns, args.quiet)
-            
-            if not args.quiet:
-                print(f"\n🎉 Batch export completed!")
-                print(f"📁 Successfully exported {len(exported_files)} files")
-            
-            sys.exit(0 if exported_files else 1)
-            
+        # Determine timeframes to process
+        all_timeframes = ['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day']
+        if args.timeframe == 'all' or args.all_timeframes:
+            timeframes = all_timeframes
+        else:
+            timeframes = [args.timeframe]
+        
+        # Determine instruments to process
+        if args.batch or args.all_instruments:
+            instruments = cli.get_available_instruments()
+            if not instruments:
+                if not args.quiet:
+                    print("❌ No instruments found for batch processing")
+                sys.exit(1)
         elif args.instrument:
-            # Single instrument mode
-            success = run_single_export(
-                cli, args.instrument, args.timeframe, patterns, args.quiet
-            )
-            
-            sys.exit(0 if success else 1)
-            
+            instruments = [args.instrument]
         else:
             # Interactive mode
             if not args.quiet:
                 print("🚀 Starting interactive mode...")
             cli.run_interactive_mode()
+            return
+        
+        # Run batch processing
+        if not args.quiet:
+            print(f"\n� Starting batch processing...")
+            print(f"📊 Instruments: {len(instruments)}")
+            print(f"⏰ Timeframes: {len(timeframes)}")
+            print(f"🔍 Patterns: {len(patterns)}")
+        
+        exported_files = []
+        total_jobs = len(instruments) * len(timeframes)
+        current_job = 0
+        
+        for instrument in instruments:
+            for timeframe in timeframes:
+                current_job += 1
+                if not args.quiet:
+                    print(f"\n[{current_job}/{total_jobs}] Processing {instrument} ({timeframe})...")
+                
+                success = run_single_export(cli, instrument, timeframe, patterns, args.quiet)
+                if success:
+                    exported_files.append(f"{instrument}_{timeframe}")
+        
+        if not args.quiet:
+            print(f"\n🎉 Batch processing completed!")
+            print(f"✅ Successfully processed {len(exported_files)} combinations")
+            print(f"❌ Failed: {total_jobs - len(exported_files)} combinations")
+        
+        sys.exit(0 if exported_files else 1)
             
     except KeyboardInterrupt:
         if not args.quiet:

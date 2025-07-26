@@ -70,14 +70,26 @@ Examples:
     parser.add_argument(
         '--timeframe',
         type=str,
-        choices=['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day'],
-        help='Timeframe for analysis'
+        choices=['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day', 'all'],
+        help='Timeframe for analysis or "all" for all timeframes'
+    )
+    
+    parser.add_argument(
+        '--all-timeframes',
+        action='store_true',
+        help='Process all available timeframes (same as --timeframe all)'
     )
     
     parser.add_argument(
         '--patterns',
         type=str,
         help='Comma-separated list of patterns to detect'
+    )
+    
+    parser.add_argument(
+        '--all-instruments',
+        action='store_true',
+        help='Process all available instruments (same as --batch)'
     )
     
     parser.add_argument(
@@ -194,11 +206,17 @@ def build_export_args(args: argparse.Namespace) -> List[str]:
     if args.batch:
         export_args.append('--batch')
     
+    if args.all_instruments:
+        export_args.append('--all-instruments')
+    
     if args.instrument:
         export_args.extend(['--instrument', args.instrument])
     
     if args.timeframe:
         export_args.extend(['--timeframe', args.timeframe])
+    
+    if args.all_timeframes:
+        export_args.append('--all-timeframes')
     
     if args.patterns:
         export_args.extend(['--patterns', args.patterns])

@@ -2,3 +2,5 @@
 .kiro/
 .exports/
 .logs/
+.__pycache__/
+.cache/
