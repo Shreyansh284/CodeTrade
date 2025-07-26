@@ -8,9 +8,10 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import pandas as pd
 import numpy as np
-import logging
+from utils.logging_config import get_logger
+from utils.error_handler import PatternDetectionError, safe_execute
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -69,7 +70,7 @@ class BasePatternDetector(ABC):
     
     def detect(self, data: pd.DataFrame, timeframe: str = "1min") -> List[PatternResult]:
         """
-        Detect patterns in the provided OHLCV data.
+        Detect patterns in the provided OHLCV data with comprehensive error handling.
         
         Args:
             data: OHLCV DataFrame with columns [open, high, low, close, volume]
@@ -78,38 +79,86 @@ class BasePatternDetector(ABC):
         Returns:
             List of detected patterns with confidence scores
         """
-        if not self._validate_data(data):
-            self.logger.warning(f"Invalid data provided to {self.get_pattern_name()} detector")
-            return []
-        
-        patterns = []
         pattern_name = self.get_pattern_name()
         
         try:
+            # Validate input data
+            if not self._validate_data(data):
+                raise PatternDetectionError(
+                    f"Invalid data provided to {pattern_name} detector",
+                    error_code="INVALID_PATTERN_DATA",
+                    context={
+                        'pattern_name': pattern_name,
+                        'data_shape': data.shape if data is not None else None,
+                        'timeframe': timeframe
+                    }
+                )
+            
+            patterns = []
+            detection_errors = []
+            
             # Iterate through data to detect patterns
             for i in range(len(data)):
-                confidence = self._detect_pattern_at_index(data, i)
-                
-                if confidence is not None and confidence >= self.min_confidence:
-                    pattern_result = PatternResult(
-                        datetime=data.index[i],
-                        pattern_type=pattern_name,
-                        confidence=confidence,
-                        timeframe=timeframe,
-                        candle_index=i,
-                        description=self._get_pattern_description()
+                try:
+                    confidence = safe_execute(
+                        self._detect_pattern_at_index,
+                        data, i,
+                        context=f"{pattern_name}_detection_at_{i}",
+                        fallback_result=None,
+                        show_errors=False
                     )
-                    patterns.append(pattern_result)
                     
-        except Exception as e:
-            self.logger.error(f"Error detecting {pattern_name} patterns: {str(e)}")
+                    if confidence is not None and confidence >= self.min_confidence:
+                        try:
+                            pattern_result = PatternResult(
+                                datetime=data.index[i],
+                                pattern_type=pattern_name.lower().replace(' ', '_'),
+                                confidence=confidence,
+                                timeframe=timeframe,
+                                candle_index=i,
+                                description=self._get_pattern_description()
+                            )
+                            patterns.append(pattern_result)
+                            
+                        except Exception as e:
+                            detection_errors.append(f"Index {i}: Failed to create pattern result - {str(e)}")
+                            
+                except Exception as e:
+                    detection_errors.append(f"Index {i}: Detection failed - {str(e)}")
+                    continue
             
-        self.logger.info(f"Detected {len(patterns)} {pattern_name} patterns")
-        return patterns
+            # Log detection errors if any
+            if detection_errors:
+                self.logger.warning(
+                    f"{pattern_name} detection had {len(detection_errors)} errors: "
+                    f"{'; '.join(detection_errors[:3])}..."  # Show first 3 errors
+                )
+            
+            self.logger.info(
+                f"Detected {len(patterns)} {pattern_name} patterns "
+                f"(scanned {len(data)} candles, {len(detection_errors)} errors)"
+            )
+            
+            return patterns
+            
+        except PatternDetectionError:
+            # Re-raise pattern detection errors
+            raise
+        except Exception as e:
+            # Wrap unexpected errors
+            raise PatternDetectionError(
+                f"Unexpected error in {pattern_name} pattern detection: {str(e)}",
+                error_code="PATTERN_DETECTION_UNEXPECTED_ERROR",
+                context={
+                    'pattern_name': pattern_name,
+                    'timeframe': timeframe,
+                    'data_length': len(data) if data is not None else 0
+                }
+            ) from e
     
     def _validate_data(self, data: pd.DataFrame) -> bool:
         """
-        Validate that the data contains required OHLCV columns.
+        Validate that the data contains required OHLCV columns with comprehensive checks.
         
         Args:
             data: DataFrame to validate
@@ -117,22 +166,86 @@ class BasePatternDetector(ABC):
         Returns:
             True if data is valid, False otherwise
         """
-        required_columns = ['open', 'high', 'low', 'close', 'volume']
-        
-        if data is None or data.empty:
-            return False
+        try:
+            required_columns = ['open', 'high', 'low', 'close', 'volume']
             
-        missing_columns = [col for col in required_columns if col not in data.columns]
-        if missing_columns:
-            self.logger.error(f"Missing required columns: {missing_columns}")
-            return False
+            # Check if data exists
+            if data is None:
+                self.logger.error("Data is None")
+                return False
+                
+            if data.empty:
+                self.logger.error("Data is empty")
+                return False
             
-        # Check for sufficient data points
-        if len(data) < self._get_min_periods():
-            self.logger.warning(f"Insufficient data points. Need at least {self._get_min_periods()}")
-            return False
+            # Check for required columns
+            missing_columns = [col for col in required_columns if col not in data.columns]
+            if missing_columns:
+                self.logger.error(f"Missing required columns: {missing_columns}")
+                return False
             
-        return True
+            # Check for sufficient data points
+            min_periods = self._get_min_periods()
+            if len(data) < min_periods:
+                self.logger.warning(
+                    f"Insufficient data points for {self.get_pattern_name()}: "
+                    f"got {len(data)}, need at least {min_periods}"
+                )
+                return False
+            
+            # Check for data quality issues
+            quality_issues = []
+            
+            # Check for null values in critical columns
+            for col in required_columns:
+                null_count = data[col].isnull().sum()
+                if null_count > 0:
+                    quality_issues.append(f"{col} has {null_count} null values")
+            
+            # Check OHLC relationships
+            if all(col in data.columns for col in ['open', 'high', 'low', 'close']):
+                invalid_ohlc = ~(
+                    (data['high'] >= data['open']) &
+                    (data['high'] >= data['close']) &
+                    (data['high'] >= data['low']) &
+                    (data['low'] <= data['open']) &
+                    (data['low'] <= data['close'])
+                )
+                invalid_count = invalid_ohlc.sum()
+                if invalid_count > 0:
+                    quality_issues.append(f"{invalid_count} candles have invalid OHLC relationships")
+            
+            # Check for non-positive prices
+            price_columns = ['open', 'high', 'low', 'close']
+            for col in price_columns:
+                non_positive = (data[col] <= 0).sum()
+                if non_positive > 0:
+                    quality_issues.append(f"{col} has {non_positive} non-positive values")
+            
+            # Log quality issues but don't fail validation unless severe
+            if quality_issues:
+                total_issues = sum(int(issue.split()[2]) for issue in quality_issues if issue.split()[2].isdigit())
+                issue_percentage = (total_issues / len(data)) * 100 if len(data) > 0 else 0
+                
+                if issue_percentage > 50:
+                    self.logger.error(
+                        f"Severe data quality issues ({issue_percentage:.1f}% of data): "
+                        f"{'; '.join(quality_issues[:3])}"
+                    )
+                    return False
+                elif issue_percentage > 10:
+                    self.logger.warning(
+                        f"Data quality issues ({issue_percentage:.1f}% of data): "
+                        f"{'; '.join(quality_issues[:3])}"
+                    )
+                else:
+                    self.logger.info(f"Minor data quality issues: {'; '.join(quality_issues[:3])}")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error validating data for {self.get_pattern_name()}: {e}")
+            return False
     
     def _get_min_periods(self) -> int:
         """
