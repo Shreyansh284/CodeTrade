@@ -382,9 +382,10 @@ def run_analysis(config: Dict[str, Any]):
         status_text.info("📈 Creating chart...")
         progress_bar.progress(80)
         
-        # Clear progress
+        # Complete progress and clear indicators
         progress_bar.progress(100)
-        time.sleep(0.5)
+        status_text.success("✅ Analysis complete!")
+        time.sleep(0.3)
         progress_container.empty()
         
         # Display results
@@ -393,6 +394,11 @@ def run_analysis(config: Dict[str, Any]):
     except Exception as e:
         st.error(f"❌ Analysis failed: {e}")
         logger.error(f"Analysis error: {e}", exc_info=True)
+        # Ensure progress indicators are cleared even on error
+        try:
+            progress_container.empty()
+        except:
+            pass
 
 
 def display_results(instrument: str, timeframe: str, data: pd.DataFrame, 
@@ -457,6 +463,9 @@ def display_pattern_details(patterns: List[PatternResult], data: pd.DataFrame, c
     # Sort patterns by confidence
     sorted_patterns = sorted(patterns, key=lambda x: x.confidence, reverse=True)
     
+    # Limit the number of detailed charts for performance
+    max_detail_charts = 5  # Only show detail charts for top 5 patterns
+    
     # Display top patterns
     for i, pattern in enumerate(sorted_patterns[:10]):  # Show top 10
         with st.expander(
@@ -482,16 +491,25 @@ def display_pattern_details(patterns: List[PatternResult], data: pd.DataFrame, c
                     st.info("🔵 Low Confidence")
             
             with col2:
-                # Create focused chart for this pattern
-                try:
-                    detail_chart = st.session_state.chart_renderer.create_pattern_detail_chart(
-                        data=data,
-                        pattern=pattern,
-                        context_candles=15
-                    )
-                    st.plotly_chart(detail_chart, use_container_width=True, key=f"pattern_{i}")
-                except Exception as e:
-                    st.error(f"Error creating detail chart: {e}")
+                # Only create detail charts for top patterns to avoid performance issues
+                if i < max_detail_charts:
+                    # Create focused chart for this pattern
+                    with st.spinner(f"Loading pattern chart {i+1}..."):
+                        try:
+                            detail_chart = st.session_state.chart_renderer.create_pattern_detail_chart(
+                                data=data,
+                                pattern=pattern,
+                                context_candles=15
+                            )
+                            if detail_chart:
+                                st.plotly_chart(detail_chart, use_container_width=True, key=f"pattern_{i}")
+                            else:
+                                st.warning("Unable to create pattern chart")
+                        except Exception as e:
+                            st.error(f"Error creating detail chart: {e}")
+                            logger.error(f"Pattern detail chart error for pattern {i}: {e}", exc_info=True)
+                else:
+                    st.info(f"📊 Pattern details available - Click 'Analyze Patterns' to view individual charts for top {max_detail_charts} patterns")
     
     # Pattern summary table
     if len(patterns) > 10:

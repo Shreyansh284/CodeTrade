@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import streamlit as st
 
 from patterns.base import PatternResult
 
@@ -70,6 +71,9 @@ class ChartRenderer:
         try:
             if data is None or data.empty:
                 return self._create_empty_chart(title, height)
+            
+            # Ensure max_candles is reasonable to prevent performance issues
+            max_candles = min(max_candles, 1000)  # Cap at 1000 candles
             
             # Limit data for better performance and readability
             if len(data) > max_candles:
@@ -158,7 +162,10 @@ class ChartRenderer:
     def _add_simple_pattern_markers(self, fig: go.Figure, patterns: List[PatternResult], data: pd.DataFrame):
         """Add clean pattern markers to the chart."""
         try:
-            for pattern in patterns[:15]:  # Limit to 15 patterns for clarity
+            # Limit patterns for performance
+            limited_patterns = patterns[:10] if patterns else []  # Max 10 patterns per chart
+            
+            for pattern in limited_patterns:
                 if not hasattr(pattern, 'candle_index') or pattern.candle_index >= len(data):
                     continue
                 
@@ -248,13 +255,30 @@ class ChartRenderer:
             Focused pattern chart
         """
         try:
-            if not hasattr(pattern, 'candle_index'):
+            # Validate inputs
+            if data is None or data.empty:
+                logger.warning("Empty data provided to create_pattern_detail_chart")
                 return self._create_empty_chart("Pattern Detail", 400)
+                
+            if not hasattr(pattern, 'candle_index'):
+                logger.warning("Pattern missing candle_index attribute")
+                return self._create_empty_chart("Pattern Detail", 400)
+                
+            if pattern.candle_index < 0 or pattern.candle_index >= len(data):
+                logger.warning(f"Pattern candle_index {pattern.candle_index} out of range for data length {len(data)}")
+                return self._create_empty_chart("Pattern Detail", 400)
+            
+            # Limit context candles for performance
+            context_candles = min(context_candles, 50)  # Max 50 candles
             
             # Extract context around pattern
             start_idx = max(0, pattern.candle_index - context_candles)
             end_idx = min(len(data), pattern.candle_index + context_candles + 1)
             context_data = data.iloc[start_idx:end_idx].copy()
+            
+            if context_data.empty:
+                logger.warning("Context data is empty")
+                return self._create_empty_chart("Pattern Detail", 400)
             
             # Adjust pattern index for context data
             adjusted_pattern = PatternResult(
@@ -276,7 +300,7 @@ class ChartRenderer:
             )
             
         except Exception as e:
-            logger.error(f"Error creating pattern detail chart: {e}")
+            logger.error(f"Error creating pattern detail chart: {e}", exc_info=True)
             return self._create_empty_chart("Pattern Detail", 400)
     
     def _create_empty_chart(self, title: str, height: int) -> go.Figure:

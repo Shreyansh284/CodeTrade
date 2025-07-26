@@ -1094,3 +1094,311 @@
 2025-07-26 15:36:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Three White Soldiers_9652092188974448093_5min_0.5
 2025-07-26 15:36:12 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Three White Soldiers_9652092188974448093_5min_0.5 (TTL: 600s)
 2025-07-26 15:36:12 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:142 - Detected 280 Three White Soldiers patterns (scanned 2700 candles)
+2025-07-26 15:45:20 - StockPatternDetector.utils.cache_manager - [32mINFO[0m - __init__:64 - Cache manager initialized with directory: .cache
+2025-07-26 15:45:20 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:20 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:20 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:20 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:20 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.009s (52125 records)
+2025-07-26 15:45:24 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:24 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:24 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:24 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:24 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.006s (52125 records)
+2025-07-26 15:45:25 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:25 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:25 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:25 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:25 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.004s (52125 records)
+2025-07-26 15:45:26 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:26 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:26 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:26 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:26 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.005s (52125 records)
+2025-07-26 15:45:27 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:27 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:27 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:27 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:27 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.004s (52125 records)
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:28 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.003s (52125 records)
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:28 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:28 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.005s (52125 records)
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.006s (52125 records)
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:45:31 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.001s (52125 records)
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: aggregated_data_f16b282b18d3d664_1hour
+2025-07-26 15:45:31 - StockPatternDetector.data.aggregator - [32mINFO[0m - _perform_ohlcv_aggregation:297 - Dropped 3930 empty periods during 1hour aggregation
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: aggregated_data_f16b282b18d3d664_1hour (TTL: 900s)
+2025-07-26 15:45:31 - StockPatternDetector.data.aggregator - [32mINFO[0m - aggregate_data:192 - Successfully aggregated 52125 records to 973 1hour candles (compression: 53.6x) in 0.05s (cached)
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Rising Window_16715181665450231555_1hour_0.5
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Rising Window_16715181665450231555_1hour_0.5 (TTL: 600s)
+2025-07-26 15:45:31 - StockPatternDetector.patterns.base.RisingWindowDetector - [32mINFO[0m - detect:142 - Detected 5 Rising Window patterns (scanned 973 candles)
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Three White Soldiers_16715181665450231555_1hour_0.5
+2025-07-26 15:45:31 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Three White Soldiers_16715181665450231555_1hour_0.5 (TTL: 600s)
+2025-07-26 15:45:31 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:142 - Detected 85 Three White Soldiers patterns (scanned 973 candles)
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:00 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.004s (52125 records)
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:00 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:00 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.006s (52125 records)
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.006s (52125 records)
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:01 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.005s (52125 records)
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: aggregated_data_f16b282b18d3d664_1hour
+2025-07-26 15:46:01 - StockPatternDetector.data.aggregator - [32mINFO[0m - aggregate_data:78 - Loaded aggregated 1hour data from cache in 0.015s
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Dragonfly Doji_16715181665450231555_1hour_0.5
+2025-07-26 15:46:01 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:131 - Used vectorized detection for Dragonfly Doji
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Dragonfly Doji_16715181665450231555_1hour_0.5 (TTL: 600s)
+2025-07-26 15:46:01 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:142 - Detected 11 Dragonfly Doji patterns (scanned 973 candles)
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Hammer_16715181665450231555_1hour_0.5
+2025-07-26 15:46:01 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:131 - Used vectorized detection for Hammer
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Hammer_16715181665450231555_1hour_0.5 (TTL: 600s)
+2025-07-26 15:46:01 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:142 - Detected 7 Hammer patterns (scanned 973 candles)
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: pattern_Rising Window_16715181665450231555_1hour_0.5
+2025-07-26 15:46:01 - StockPatternDetector.patterns.base.RisingWindowDetector - [32mINFO[0m - detect:108 - Loaded 5 Rising Window patterns from cache
+2025-07-26 15:46:01 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Evening Star_16715181665450231555_1hour_0.5
+2025-07-26 15:46:02 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Evening Star_16715181665450231555_1hour_0.5 (TTL: 600s)
+2025-07-26 15:46:02 - StockPatternDetector.patterns.base.EveningStarDetector - [32mINFO[0m - detect:142 - Detected 20 Evening Star patterns (scanned 973 candles)
+2025-07-26 15:46:02 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: pattern_Three White Soldiers_16715181665450231555_1hour_0.5
+2025-07-26 15:46:02 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:108 - Loaded 85 Three White Soldiers patterns from cache
+2025-07-26 15:46:37 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:37 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:37 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:37 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:37 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.002s (52125 records)
+2025-07-26 15:46:40 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:46:40 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:46:40 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.008s (52125 records)
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: aggregated_data_f16b282b18d3d664_5min
+2025-07-26 15:46:40 - StockPatternDetector.data.aggregator - [32mINFO[0m - _perform_ohlcv_aggregation:297 - Dropped 48402 empty periods during 5min aggregation
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: aggregated_data_f16b282b18d3d664_5min (TTL: 900s)
+2025-07-26 15:46:40 - StockPatternDetector.data.aggregator - [32mINFO[0m - aggregate_data:192 - Successfully aggregated 52125 records to 10425 5min candles (compression: 5.0x) in 0.05s (cached)
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Dragonfly Doji_9392196518852661645_5min_0.5
+2025-07-26 15:46:40 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:131 - Used vectorized detection for Dragonfly Doji
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Dragonfly Doji_9392196518852661645_5min_0.5 (TTL: 600s)
+2025-07-26 15:46:40 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:142 - Detected 226 Dragonfly Doji patterns (scanned 10425 candles)
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Hammer_9392196518852661645_5min_0.5
+2025-07-26 15:46:40 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:131 - Used vectorized detection for Hammer
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Hammer_9392196518852661645_5min_0.5 (TTL: 600s)
+2025-07-26 15:46:40 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:142 - Detected 96 Hammer patterns (scanned 10425 candles)
+2025-07-26 15:46:40 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Rising Window_9392196518852661645_5min_0.5
+2025-07-26 15:46:41 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Rising Window_9392196518852661645_5min_0.5 (TTL: 600s)
+2025-07-26 15:46:41 - StockPatternDetector.patterns.base.RisingWindowDetector - [32mINFO[0m - detect:142 - Detected 6 Rising Window patterns (scanned 10425 candles)
+2025-07-26 15:46:41 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Evening Star_9392196518852661645_5min_0.5
+2025-07-26 15:46:41 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Evening Star_9392196518852661645_5min_0.5 (TTL: 600s)
+2025-07-26 15:46:41 - StockPatternDetector.patterns.base.EveningStarDetector - [32mINFO[0m - detect:142 - Detected 243 Evening Star patterns (scanned 10425 candles)
+2025-07-26 15:46:41 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: pattern_Three White Soldiers_9392196518852661645_5min_0.5
+2025-07-26 15:46:42 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: pattern_Three White Soldiers_9392196518852661645_5min_0.5 (TTL: 600s)
+2025-07-26 15:46:42 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:142 - Detected 899 Three White Soldiers patterns (scanned 10425 candles)
+2025-07-26 15:51:48 - StockPatternDetector.utils.cache_manager - [32mINFO[0m - __init__:64 - Cache manager initialized with directory: .cache
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:51:48 - StockPatternDetector.utils.cache_manager - DEBUG - _is_cache_valid:118 - Cache expired: instrument_data_BAJAJ-AUTO_5Scripts.cache (age: 2085.7s)
+2025-07-26 15:51:48 - StockPatternDetector.utils.cache_manager - DEBUG - get:180 - Removed invalid cache: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:51:48 - StockPatternDetector.utils.cache_manager - DEBUG - get:192 - Cache miss: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:287 - Loading 139 CSV files for BAJAJ-AUTO
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 26-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 15-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 30-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 30-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 02-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 02-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 14-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 27-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 09-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 16-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 16-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 25-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 04-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 04-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 12-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 13-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 20-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 18-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 18-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 06-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 10-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 29-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 29-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 11-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 11-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 22-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 12-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 12-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 04-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 19-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 05-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 13-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 20-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 20-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 28-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 23-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 23-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 10-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 10-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 06-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 11-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 22-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 26-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 15-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 08-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:48 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 08-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 14-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 27-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 31-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 09-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 09-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 01-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 16-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 25-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 25-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 28-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 28-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 06-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 23-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 10-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 10-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 12-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 19-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 19-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 13-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 20-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 05-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 05-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 01-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 16-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 16-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 25-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 30-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 08-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 02-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 02-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 14-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 27-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 27-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 01-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 24-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 17-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 03-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 30-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 26-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 15-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 15-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 08-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 14-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 27-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 02-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 09-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 09-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 28-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 28-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 23-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 23-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 06-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 06-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 29-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 07-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 11-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 11-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 22-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 22-04-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 21-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 04-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 04-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 05-05-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 13-02-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 13-03-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 20-01-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 18-06-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - DEBUG - _parse_datetime:604 - Successfully parsed datetime in 18-07-2025.csv using format: %d-%m-%Y %H:%M:%S
+2025-07-26 15:51:49 - StockPatternDetector.utils.cache_manager - DEBUG - set:232 - Cached item: instrument_data_BAJAJ-AUTO_5Scripts (TTL: 1800s)
+2025-07-26 15:51:49 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:370 - Successfully loaded 52125 records for BAJAJ-AUTO from 139/139 files in 1.32s (cached)
+2025-07-26 15:51:51 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:51:51 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:51:51 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.008s (52125 records)
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: aggregated_data_f16b282b18d3d664_5min
+2025-07-26 15:51:51 - StockPatternDetector.data.aggregator - [32mINFO[0m - aggregate_data:78 - Loaded aggregated 5min data from cache in 0.017s
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Dragonfly Doji_9392196518852661645_5min_0.5
+2025-07-26 15:51:51 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:108 - Loaded 226 Dragonfly Doji patterns from cache
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Hammer_9392196518852661645_5min_0.5
+2025-07-26 15:51:51 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:108 - Loaded 96 Hammer patterns from cache
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Rising Window_9392196518852661645_5min_0.5
+2025-07-26 15:51:51 - StockPatternDetector.patterns.base.RisingWindowDetector - [32mINFO[0m - detect:108 - Loaded 6 Rising Window patterns from cache
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Evening Star_9392196518852661645_5min_0.5
+2025-07-26 15:51:51 - StockPatternDetector.patterns.base.EveningStarDetector - [32mINFO[0m - detect:108 - Loaded 243 Evening Star patterns from cache
+2025-07-26 15:51:51 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Three White Soldiers_9392196518852661645_5min_0.5
+2025-07-26 15:51:51 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:108 - Loaded 899 Three White Soldiers patterns from cache
+2025-07-26 15:53:11 - StockPatternDetector.utils.cache_manager - [32mINFO[0m - __init__:64 - Cache manager initialized with directory: .cache
+2025-07-26 15:53:11 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:53:11 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:53:11 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:53:11 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:53:11 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.031s (52125 records)
+2025-07-26 15:53:12 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_instruments:92 - Found 5 valid instruments: ['RELIANCE', 'TCS', 'BHARTIARTL', 'ICICIBANK', 'BAJAJ-AUTO']
+2025-07-26 15:53:12 - StockPatternDetector.data.loader - [32mINFO[0m - get_available_dates:152 - Found 139 available dates for BAJAJ-AUTO
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:154 - Memory cache hit: instrument_data_BAJAJ-AUTO_5Scripts
+2025-07-26 15:53:12 - StockPatternDetector.data.loader - [32mINFO[0m - load_instrument_data:232 - Loaded BAJAJ-AUTO from cache in 0.019s (52125 records)
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: aggregated_data_f16b282b18d3d664_5min
+2025-07-26 15:53:12 - StockPatternDetector.data.aggregator - [32mINFO[0m - aggregate_data:78 - Loaded aggregated 5min data from cache in 0.026s
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Dragonfly Doji_9392196518852661645_5min_0.5
+2025-07-26 15:53:12 - StockPatternDetector.patterns.base.DragonflyDojiDetector - [32mINFO[0m - detect:108 - Loaded 226 Dragonfly Doji patterns from cache
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Hammer_9392196518852661645_5min_0.5
+2025-07-26 15:53:12 - StockPatternDetector.patterns.base.HammerDetector - [32mINFO[0m - detect:108 - Loaded 96 Hammer patterns from cache
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Rising Window_9392196518852661645_5min_0.5
+2025-07-26 15:53:12 - StockPatternDetector.patterns.base.RisingWindowDetector - [32mINFO[0m - detect:108 - Loaded 6 Rising Window patterns from cache
+2025-07-26 15:53:12 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Evening Star_9392196518852661645_5min_0.5
+2025-07-26 15:53:12 - StockPatternDetector.patterns.base.EveningStarDetector - [32mINFO[0m - detect:108 - Loaded 243 Evening Star patterns from cache
+2025-07-26 15:53:13 - StockPatternDetector.utils.cache_manager - DEBUG - get:175 - Disk cache hit: pattern_Three White Soldiers_9392196518852661645_5min_0.5
+2025-07-26 15:53:13 - StockPatternDetector.patterns.base.ThreeWhiteSoldiersDetector - [32mINFO[0m - detect:108 - Loaded 899 Three White Soldiers patterns from cache
