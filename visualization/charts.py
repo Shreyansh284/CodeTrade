@@ -1,757 +1,303 @@
 """
-Chart rendering module for stock pattern detector.
+Simple and effective chart rendering for stock pattern detection.
 
-This module provides functionality to create interactive candlestick charts
-using Plotly with responsive design and pattern highlighting capabilities.
+Focused on clean, readable candlestick charts with clear pattern indicators.
 """
 
 import logging
-from typing import List, Optional, Dict, Any, Tuple, Callable
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.express as px
 
 from patterns.base import PatternResult
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
 class ChartRenderer:
     """
-    Handles creation and management of interactive candlestick charts.
+    Simple chart renderer focused on clarity and performance.
     
-    Provides responsive chart configuration, interactive features,
-    and pattern highlighting capabilities.
+    Creates clean candlestick charts with distinctive pattern markers.
     """
     
     def __init__(self):
-        """Initialize the chart renderer with default configuration."""
-        self.default_config = {
+        """Initialize with clean, professional settings."""
+        self.config = {
             'displayModeBar': True,
             'displaylogo': False,
             'modeBarButtonsToRemove': [
-                'pan2d', 'select2d', 'lasso2d', 'autoScale2d', 'hoverClosestCartesian',
-                'hoverCompareCartesian', 'toggleSpikelines'
+                'pan2d', 'select2d', 'lasso2d', 'autoScale2d', 
+                'hoverClosestCartesian', 'hoverCompareCartesian'
             ],
             'responsive': True
         }
         
-        # Pattern color mapping
-        self.pattern_colors = {
-            'dragonfly_doji': '#FF6B6B',      # Red
-            'hammer': '#4ECDC4',              # Teal
-            'rising_window': '#45B7D1',       # Blue
-            'evening_star': '#96CEB4',        # Green
-            'three_white_soldiers': '#FFEAA7' # Yellow
+        # Clean color scheme for patterns
+        self.pattern_styles = {
+            'dragonfly_doji': {'color': '#FF4444', 'symbol': 'triangle-down', 'size': 12},
+            'hammer': {'color': '#00CC88', 'symbol': 'diamond', 'size': 11},
+            'rising_window': {'color': '#4488FF', 'symbol': 'arrow-up', 'size': 13},
+            'evening_star': {'color': '#FF8800', 'symbol': 'star', 'size': 12},
+            'three_white_soldiers': {'color': '#8844FF', 'symbol': 'triangle-up', 'size': 11}
         }
         
-        # Default pattern color for unknown patterns
-        self.default_pattern_color = '#DDA0DD'  # Plum
-        
-        # Initialize pattern highlighter for advanced features
-        from .pattern_highlighter import PatternHighlighter
-        self.pattern_highlighter = PatternHighlighter()
+        self.default_pattern_style = {'color': '#888888', 'symbol': 'circle', 'size': 8}
     
-    def create_candlestick_chart(
+    def create_simple_chart(
         self, 
         data: pd.DataFrame, 
-        title: str = "Stock Price Chart",
-        height: int = 600,
-        show_volume: bool = True
+        patterns: List[PatternResult] = None,
+        title: str = "Stock Chart",
+        height: int = 500,
+        max_candles: int = 300
     ) -> go.Figure:
         """
-        Create an interactive candlestick chart with optional volume subplot.
-        Optimized for large datasets with intelligent sampling.
+        Create a clean, simple candlestick chart with pattern markers.
         
         Args:
             data: OHLCV DataFrame with datetime index
+            patterns: List of detected patterns to highlight
             title: Chart title
             height: Chart height in pixels
-            show_volume: Whether to show volume subplot
+            max_candles: Maximum number of candles to display
             
         Returns:
-            Plotly Figure object with candlestick chart
+            Clean Plotly candlestick chart
         """
         try:
             if data is None or data.empty:
-                logger.warning("Empty data provided to chart renderer")
                 return self._create_empty_chart(title, height)
             
-            # Validate required columns
-            required_cols = ['open', 'high', 'low', 'close']
-            if not all(col in data.columns for col in required_cols):
-                logger.error(f"Missing required OHLC columns in data")
-                return self._create_empty_chart(title, height)
+            # Limit data for better performance and readability
+            if len(data) > max_candles:
+                data = data.tail(max_candles).copy()
+                # Adjust pattern indices if needed
+                if patterns:
+                    offset = len(data) - max_candles
+                    adjusted_patterns = []
+                    for p in patterns:
+                        if hasattr(p, 'candle_index') and p.candle_index >= offset:
+                            # Create new pattern with adjusted index
+                            adjusted_pattern = PatternResult(
+                                pattern_type=p.pattern_type,
+                                confidence=p.confidence,
+                                datetime=p.datetime,
+                                timeframe=p.timeframe,
+                                candle_index=p.candle_index - offset
+                            )
+                            adjusted_patterns.append(adjusted_pattern)
+                    patterns = adjusted_patterns
             
-            # Optimize data for large datasets
-            optimized_data = self._optimize_data_for_rendering(data)
-            if optimized_data is not data:
-                logger.info(f"Optimized chart data from {len(data)} to {len(optimized_data)} points")
-                data = optimized_data
+            # Create figure
+            fig = go.Figure()
             
-            # Create subplots if volume is requested
-            if show_volume and 'volume' in data.columns:
-                fig = make_subplots(
-                    rows=2, cols=1,
-                    shared_xaxes=True,
-                    vertical_spacing=0.03,
-                    subplot_titles=(title, 'Volume'),
-                    row_width=[0.7, 0.3]
-                )
-                volume_row = 2
-            else:
-                fig = make_subplots(rows=1, cols=1)
-                fig.update_layout(title=title)
-                volume_row = None
-            
-            # Add candlestick trace
-            candlestick = go.Candlestick(
-                x=data['datetime'] if 'datetime' in data.columns else data.index,
+            # Add candlestick trace with better visibility
+            fig.add_trace(go.Candlestick(
+                x=data.index,
                 open=data['open'],
                 high=data['high'],
                 low=data['low'],
                 close=data['close'],
-                name="OHLC",
-                increasing_line_color='#00C851',  # Green for bullish
-                decreasing_line_color='#FF4444',  # Red for bearish
-                increasing_fillcolor='#00C851',
-                decreasing_fillcolor='#FF4444',
-                line=dict(width=1),
-                hovertext=[
-                    f'Open: ${row["open"]:.2f}<br>High: ${row["high"]:.2f}<br>Low: ${row["low"]:.2f}<br>Close: ${row["close"]:.2f}'
-                    for _, row in data.iterrows()
-                ]
+                name="Price",
+                increasing_line_color='#2E7D32',    # Darker green for better visibility
+                decreasing_line_color='#C62828',    # Darker red for better visibility
+                increasing_fillcolor='rgba(76, 175, 80, 0.7)',   # Material green
+                decreasing_fillcolor='rgba(244, 67, 54, 0.7)',   # Material red
+                line=dict(width=1.5)  # Slightly thicker lines
+            ))
+            
+            # Add pattern markers
+            if patterns:
+                self._add_simple_pattern_markers(fig, patterns, data)
+            
+            # Clean layout with better grid visibility
+            fig.update_layout(
+                title=dict(
+                    text=title,
+                    x=0.5,
+                    font=dict(size=16, color='#2E2E2E')
+                ),
+                height=height,
+                margin=dict(l=60, r=60, t=80, b=60),
+                plot_bgcolor='#FAFAFA',  # Light gray background for better contrast
+                paper_bgcolor='white',
+                font=dict(family="Arial, sans-serif", size=12, color='#2E2E2E'),
+                showlegend=False,
+                xaxis=dict(
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='rgba(128, 128, 128, 0.3)',  # More visible grid
+                    showline=True,
+                    linewidth=1,
+                    linecolor='rgba(128, 128, 128, 0.5)',
+                    rangeslider=dict(visible=False),
+                    tickfont=dict(size=10)
+                ),
+                yaxis=dict(
+                    title="Price",
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='rgba(128, 128, 128, 0.3)',  # More visible grid
+                    showline=True,
+                    linewidth=1,
+                    linecolor='rgba(128, 128, 128, 0.5)',
+                    tickfont=dict(size=10)
+                ),
+                hovermode='x unified'
             )
             
-            if volume_row:
-                fig.add_trace(candlestick, row=1, col=1)
-            else:
-                fig.add_trace(candlestick)
-            
-            # Add volume bars if requested
-            if volume_row and 'volume' in data.columns:
-                # Color volume bars based on price movement
-                colors = []
-                for i in range(len(data)):
-                    if data.iloc[i]['close'] >= data.iloc[i]['open']:
-                        colors.append('#00C851')  # Green for up days
-                    else:
-                        colors.append('#FF4444')  # Red for down days
-                
-                volume_trace = go.Bar(
-                    x=data['datetime'] if 'datetime' in data.columns else data.index,
-                    y=data['volume'],
-                    name="Volume",
-                    marker_color=colors,
-                    opacity=0.7,
-                    hovertext=[
-                        f'Volume: {vol:,.0f}'
-                        for vol in data['volume']
-                    ]
-                )
-                
-                fig.add_trace(volume_trace, row=volume_row, col=1)
-            
-            # Configure layout for responsiveness and interactivity
-            self._configure_chart_layout(fig, height, show_volume)
-            
-            logger.info(f"Created candlestick chart with {len(data)} data points")
             return fig
             
         except Exception as e:
-            logger.error(f"Error creating candlestick chart: {e}")
+            logger.error(f"Error creating simple chart: {e}")
             return self._create_empty_chart(title, height)
     
-    def highlight_patterns(
-        self, 
-        fig: go.Figure, 
-        patterns: List[PatternResult],
-        data: pd.DataFrame,
-        advanced_highlighting: bool = True
-    ) -> go.Figure:
-        """
-        Add pattern markers and annotations to the chart.
-        
-        Args:
-            fig: Existing Plotly figure
-            patterns: List of detected patterns
-            data: Original OHLCV data for reference
-            advanced_highlighting: Whether to use advanced highlighting features
-            
-        Returns:
-            Updated figure with pattern highlights
-        """
+    def _add_simple_pattern_markers(self, fig: go.Figure, patterns: List[PatternResult], data: pd.DataFrame):
+        """Add clean pattern markers to the chart."""
         try:
-            if not patterns:
-                logger.info("No patterns to highlight")
-                return fig
-            
-            logger.info(f"Highlighting {len(patterns)} patterns on chart")
-            
-            if advanced_highlighting:
-                # Use advanced pattern highlighter
-                fig = self.pattern_highlighter.add_pattern_overlays(
-                    fig, patterns, data, enable_click_navigation=True
+            for pattern in patterns[:15]:  # Limit to 15 patterns for clarity
+                if not hasattr(pattern, 'candle_index') or pattern.candle_index >= len(data):
+                    continue
+                
+                candle_time = data.index[pattern.candle_index]
+                candle_data = data.iloc[pattern.candle_index]
+                
+                # Get pattern style
+                style = self.pattern_styles.get(
+                    pattern.pattern_type, 
+                    self.default_pattern_style
                 )
-                fig = self.pattern_highlighter.add_confidence_indicators(
-                    fig, patterns, data
-                )
-            else:
-                # Use basic highlighting
-                fig = self._add_basic_pattern_markers(fig, patterns, data)
-            
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error highlighting patterns: {e}")
-            return fig
-    
-    def _add_basic_pattern_markers(
-        self, 
-        fig: go.Figure, 
-        patterns: List[PatternResult],
-        data: pd.DataFrame
-    ) -> go.Figure:
-        """
-        Add basic pattern markers (fallback method).
-        
-        Args:
-            fig: Existing Plotly figure
-            patterns: List of detected patterns
-            data: Original OHLCV data for reference
-            
-        Returns:
-            Updated figure with basic pattern highlights
-        """
-        try:
-            # Group patterns by type for legend organization
-            pattern_groups = {}
-            for pattern in patterns:
-                pattern_type = pattern.pattern_type
-                if pattern_type not in pattern_groups:
-                    pattern_groups[pattern_type] = []
-                pattern_groups[pattern_type].append(pattern)
-            
-            # Add markers for each pattern type
-            for pattern_type, pattern_list in pattern_groups.items():
-                color = self.pattern_colors.get(pattern_type, self.default_pattern_color)
                 
-                # Extract coordinates for markers
-                x_coords = []
-                y_coords = []
-                hover_texts = []
+                # Position marker above high with better spacing
+                marker_y = candle_data['high'] * 1.025
                 
-                for pattern in pattern_list:
-                    try:
-                        # Find the corresponding data point
-                        if 'datetime' in data.columns:
-                            mask = data['datetime'] == pattern.datetime
-                        else:
-                            # Use index if datetime column not available
-                            mask = data.index == pattern.candle_index
-                        
-                        if mask.any():
-                            row = data[mask].iloc[0]
-                            x_coords.append(pattern.datetime)
-                            # Position marker above the high of the candle
-                            y_coords.append(row['high'] * 1.02)
-                            
-                            hover_text = (
-                                f"<b>{pattern.pattern_type.replace('_', ' ').title()}</b><br>"
-                                f"Confidence: {pattern.confidence:.1%}<br>"
-                                f"Time: {pattern.datetime.strftime('%Y-%m-%d %H:%M:%S')}<br>"
-                                f"Timeframe: {pattern.timeframe}"
-                            )
-                            hover_texts.append(hover_text)
-                            
-                    except Exception as e:
-                        logger.warning(f"Error processing pattern {pattern.pattern_type}: {e}")
-                        continue
+                # Confidence-based size and opacity
+                base_size = style['size']
+                confidence_size = base_size + int(pattern.confidence * 4)  # 0-4 extra pixels
+                opacity = 0.8 + (pattern.confidence * 0.2)  # 0.8 to 1.0
                 
-                if x_coords:
-                    # Add scatter trace for pattern markers
-                    pattern_trace = go.Scatter(
-                        x=x_coords,
-                        y=y_coords,
-                        mode='markers',
-                        name=pattern_type.replace('_', ' ').title(),
-                        marker=dict(
-                            symbol='triangle-down',
-                            size=12,
-                            color=color,
-                            line=dict(width=2, color='white')
-                        ),
-                        hovertemplate='%{text}<extra></extra>',
-                        text=hover_texts,
-                        showlegend=True
-                    )
-                    
-                    fig.add_trace(pattern_trace)
-            
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error adding basic pattern markers: {e}")
-            return fig
-    
-    def add_interactivity(self, fig: go.Figure) -> go.Figure:
-        """
-        Add interactive features like zoom, pan, and hover tooltips.
-        
-        Args:
-            fig: Plotly figure to enhance
-            
-        Returns:
-            Enhanced figure with interactive features
-        """
-        try:
-            # Update layout for better interactivity
-            fig.update_layout(
-                # Enable crossfilter interactions
-                hovermode='x unified',
-                
-                # Configure zoom and pan
-                dragmode='zoom',
-                
-                # Add range selector buttons
-                xaxis=dict(
-                    rangeselector=dict(
-                        buttons=list([
-                            dict(count=1, label="1D", step="day", stepmode="backward"),
-                            dict(count=7, label="7D", step="day", stepmode="backward"),
-                            dict(count=30, label="30D", step="day", stepmode="backward"),
-                            dict(count=90, label="3M", step="day", stepmode="backward"),
-                            dict(step="all", label="All")
-                        ])
+                fig.add_trace(go.Scatter(
+                    x=[candle_time],
+                    y=[marker_y],
+                    mode='markers',
+                    marker=dict(
+                        symbol=style['symbol'],
+                        size=confidence_size,
+                        color=style['color'],
+                        opacity=opacity,
+                        line=dict(width=2, color='white')  # Better outline
                     ),
-                    rangeslider=dict(visible=False),  # Disable range slider for cleaner look
-                    type="date"
-                )
-            )
-            
-            # Add custom config for better user experience
-            fig.update_layout(
-                # Improve legend
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor="rgba(255,255,255,0.8)",
-                    bordercolor="rgba(0,0,0,0.2)",
-                    borderwidth=1
-                )
-            )
-            
-            logger.info("Added interactive features to chart")
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error adding interactivity: {e}")
-            return fig
-    
-    def create_pattern_summary_chart(self, patterns: List[PatternResult]) -> go.Figure:
-        """
-        Create a summary chart showing pattern distribution.
-        
-        Args:
-            patterns: List of detected patterns
-            
-        Returns:
-            Bar chart showing pattern counts
-        """
-        try:
-            if not patterns:
-                return self._create_empty_chart("No Patterns Detected", 400)
-            
-            # Count patterns by type
-            pattern_counts = {}
-            for pattern in patterns:
-                pattern_type = pattern.pattern_type.replace('_', ' ').title()
-                pattern_counts[pattern_type] = pattern_counts.get(pattern_type, 0) + 1
-            
-            # Create bar chart
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=list(pattern_counts.keys()),
-                    y=list(pattern_counts.values()),
-                    marker_color=[
-                        self.pattern_colors.get(k.lower().replace(' ', '_'), self.default_pattern_color)
-                        for k in pattern_counts.keys()
-                    ],
-                    hovertemplate='<b>%{x}</b><br>Count: %{y}<extra></extra>'
-                )
-            ])
-            
-            fig.update_layout(
-                title="Detected Patterns Summary",
-                xaxis_title="Pattern Type",
-                yaxis_title="Count",
-                height=400,
-                showlegend=False
-            )
-            
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error creating pattern summary chart: {e}")
-            return self._create_empty_chart("Error Creating Summary", 400)
-    
-    def _configure_chart_layout(self, fig: go.Figure, height: int, show_volume: bool) -> None:
-        """
-        Configure chart layout for responsiveness and aesthetics.
-        
-        Args:
-            fig: Figure to configure
-            height: Chart height
-            show_volume: Whether volume subplot is shown
-        """
-        try:
-            # Base layout configuration
-            layout_config = {
-                'height': height,
-                'margin': dict(l=50, r=50, t=50, b=50),
-                'paper_bgcolor': 'white',
-                'plot_bgcolor': 'white',
-                'font': dict(size=12),
+                    hovertemplate=(
+                        f"<b>{pattern.pattern_type.replace('_', ' ').title()}</b><br>"
+                        f"Confidence: {pattern.confidence:.1%}<br>"
+                        f"Time: {pattern.datetime.strftime('%Y-%m-%d %H:%M')}<br>"
+                        "<extra></extra>"
+                    ),
+                    showlegend=False
+                ))
                 
-                # Grid configuration
-                'xaxis': dict(
-                    showgrid=True,
-                    gridwidth=1,
-                    gridcolor='rgba(128,128,128,0.2)',
-                    showline=True,
-                    linewidth=1,
-                    linecolor='rgba(128,128,128,0.5)'
-                ),
-                'yaxis': dict(
-                    title='Price ($)',
-                    showgrid=True,
-                    gridwidth=1,
-                    gridcolor='rgba(128,128,128,0.2)',
-                    showline=True,
-                    linewidth=1,
-                    linecolor='rgba(128,128,128,0.5)'
-                )
-            }
-            
-            # Configure volume subplot if present
-            if show_volume:
-                layout_config['yaxis2'] = dict(
-                    title='Volume',
-                    showgrid=True,
-                    gridwidth=1,
-                    gridcolor='rgba(128,128,128,0.2)'
-                )
-            
-            fig.update_layout(**layout_config)
-            
         except Exception as e:
-            logger.error(f"Error configuring chart layout: {e}")
+            logger.error(f"Error adding pattern markers: {e}")
     
-    def _create_empty_chart(self, title: str, height: int) -> go.Figure:
+    def create_compact_chart(
+        self,
+        data: pd.DataFrame,
+        patterns: List[PatternResult] = None,
+        title: str = "Quick View",
+        height: int = 350
+    ) -> go.Figure:
         """
-        Create an empty chart with error message.
+        Create a compact chart for overview display.
         
         Args:
+            data: OHLCV DataFrame
+            patterns: List of patterns
             title: Chart title
             height: Chart height
             
         Returns:
-            Empty figure with message
+            Compact chart figure
         """
-        fig = go.Figure()
-        fig.update_layout(
+        # Use last 100 candles for compact view
+        return self.create_simple_chart(
+            data=data,
+            patterns=patterns,
             title=title,
             height=height,
-            annotations=[
-                dict(
-                    text="No data available or error occurred",
-                    xref="paper", yref="paper",
-                    x=0.5, y=0.5,
-                    xanchor='center', yanchor='middle',
-                    showarrow=False,
-                    font=dict(size=16, color="gray")
-                )
-            ]
+            max_candles=100
         )
-        return fig
     
-    def get_pattern_color(self, pattern_type: str) -> str:
-        """
-        Get the color associated with a pattern type.
-        
-        Args:
-            pattern_type: Type of pattern
-            
-        Returns:
-            Hex color code
-        """
-        return self.pattern_colors.get(pattern_type, self.default_pattern_color)
-    
-    def update_chart_timeframe_focus(
-        self, 
-        fig: go.Figure, 
-        center_datetime: datetime, 
-        window_minutes: int = 60
-    ) -> go.Figure:
-        """
-        Focus the chart on a specific datetime with a time window.
-        
-        Args:
-            fig: Figure to update
-            center_datetime: Datetime to center on
-            window_minutes: Minutes to show before and after center
-            
-        Returns:
-            Updated figure with focused time range
-        """
-        try:
-            from datetime import timedelta
-            
-            start_time = center_datetime - timedelta(minutes=window_minutes // 2)
-            end_time = center_datetime + timedelta(minutes=window_minutes // 2)
-            
-            fig.update_layout(
-                xaxis=dict(
-                    range=[start_time, end_time]
-                )
-            )
-            
-            logger.info(f"Focused chart on {center_datetime} with {window_minutes}min window")
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error focusing chart timeframe: {e}")
-            return fig
-    
-    def create_pattern_detail_view(
-        self, 
-        data: pd.DataFrame, 
+    def create_pattern_detail_chart(
+        self,
+        data: pd.DataFrame,
         pattern: PatternResult,
-        context_candles: int = 10,
-        title: str = None
+        context_candles: int = 20
     ) -> go.Figure:
         """
-        Create a detailed view focused on a specific pattern.
+        Create a focused chart showing a specific pattern with context.
         
         Args:
             data: OHLCV DataFrame
-            pattern: Pattern to focus on
-            context_candles: Number of candles to show around pattern
-            title: Custom title for the chart
+            pattern: The pattern to focus on
+            context_candles: Number of candles to show around the pattern
             
         Returns:
-            Detailed chart focused on the pattern
+            Focused pattern chart
         """
         try:
-            if title is None:
-                title = f"{pattern.pattern_type.replace('_', ' ').title()} Pattern Detail"
+            if not hasattr(pattern, 'candle_index'):
+                return self._create_empty_chart("Pattern Detail", 400)
             
-            # Create base chart
-            fig = self.create_candlestick_chart(data, title=title, height=500, show_volume=False)
+            # Extract context around pattern
+            start_idx = max(0, pattern.candle_index - context_candles)
+            end_idx = min(len(data), pattern.candle_index + context_candles + 1)
+            context_data = data.iloc[start_idx:end_idx].copy()
             
-            # Add pattern detail overlay
-            fig = self.pattern_highlighter.create_pattern_detail_overlay(
-                fig, pattern, data, context_candles
+            # Adjust pattern index for context data
+            adjusted_pattern = PatternResult(
+                pattern_type=pattern.pattern_type,
+                confidence=pattern.confidence,
+                datetime=pattern.datetime,
+                timeframe=pattern.timeframe,
+                candle_index=pattern.candle_index - start_idx
             )
             
-            # Focus on pattern timeframe
-            fig = self.update_chart_timeframe_focus(
-                fig, pattern.datetime, window_minutes=context_candles * 5
+            title = f"{pattern.pattern_type.replace('_', ' ').title()} - {pattern.confidence:.1%} Confidence"
+            
+            return self.create_simple_chart(
+                data=context_data,
+                patterns=[adjusted_pattern],
+                title=title,
+                height=400,
+                max_candles=len(context_data)
             )
             
-            return fig
-            
         except Exception as e:
-            logger.error(f"Error creating pattern detail view: {e}")
-            return self._create_empty_chart(title or "Pattern Detail", 500)
+            logger.error(f"Error creating pattern detail chart: {e}")
+            return self._create_empty_chart("Pattern Detail", 400)
     
-    def create_pattern_navigation_interface(
-        self, 
-        patterns: List[PatternResult]
-    ) -> Dict[str, Any]:
-        """
-        Create navigation interface data for pattern browsing.
-        
-        Args:
-            patterns: List of detected patterns
-            
-        Returns:
-            Dictionary with navigation interface data
-        """
-        try:
-            if not patterns:
-                return {'patterns': [], 'timeline': None, 'summary': None}
-            
-            # Sort patterns by datetime
-            sorted_patterns = sorted(patterns, key=lambda p: p.datetime)
-            
-            # Create pattern summary data
-            pattern_summary = {}
-            for pattern in patterns:
-                pattern_type = pattern.pattern_type.replace('_', ' ').title()
-                if pattern_type not in pattern_summary:
-                    pattern_summary[pattern_type] = {
-                        'count': 0,
-                        'avg_confidence': 0.0,
-                        'color': self.get_pattern_color(pattern.pattern_type)
-                    }
-                pattern_summary[pattern_type]['count'] += 1
-                pattern_summary[pattern_type]['avg_confidence'] += pattern.confidence
-            
-            # Calculate average confidence
-            for pattern_type in pattern_summary:
-                count = pattern_summary[pattern_type]['count']
-                pattern_summary[pattern_type]['avg_confidence'] /= count
-            
-            # Create timeline chart
-            timeline_fig = self.pattern_highlighter.create_pattern_timeline(patterns)
-            
-            # Create summary chart
-            summary_fig = self.create_pattern_summary_chart(patterns)
-            
-            return {
-                'patterns': [
-                    {
-                        'datetime': p.datetime,
-                        'pattern_type': p.pattern_type.replace('_', ' ').title(),
-                        'confidence': p.confidence,
-                        'timeframe': p.timeframe,
-                        'color': self.get_pattern_color(p.pattern_type),
-                        'index': i
-                    }
-                    for i, p in enumerate(sorted_patterns)
-                ],
-                'timeline': timeline_fig,
-                'summary': summary_fig,
-                'pattern_summary': pattern_summary
-            }
-            
-        except Exception as e:
-            logger.error(f"Error creating navigation interface: {e}")
-            return {'patterns': [], 'timeline': None, 'summary': None}
-    
-    def _optimize_data_for_rendering(self, data: pd.DataFrame, max_points: int = 2000) -> pd.DataFrame:
-        """
-        Optimize data for chart rendering by intelligent sampling for large datasets.
-        
-        Args:
-            data: Original OHLCV data
-            max_points: Maximum number of points to render
-            
-        Returns:
-            Optimized DataFrame for rendering
-        """
-        try:
-            if len(data) <= max_points:
-                return data
-            
-            logger.info(f"Optimizing chart data: {len(data)} points -> max {max_points} points")
-            
-            # Use intelligent sampling that preserves important price movements
-            # Strategy: Keep more points where price volatility is high
-            
-            # Calculate price volatility (high-low range as percentage of close)
-            volatility = (data['high'] - data['low']) / data['close']
-            volatility = volatility.fillna(0)
-            
-            # Calculate volume spikes (volume above average)
-            avg_volume = data['volume'].mean()
-            volume_spike = data['volume'] / avg_volume
-            volume_spike = volume_spike.fillna(1)
-            
-            # Combine volatility and volume for importance score
-            importance = volatility * 0.7 + (volume_spike - 1) * 0.3
-            importance = importance.fillna(0)
-            
-            # Always keep first and last points
-            keep_indices = {0, len(data) - 1}
-            
-            # Sample based on importance, keeping high-importance points
-            remaining_points = max_points - 2  # Account for first and last
-            
-            if remaining_points > 0:
-                # Sort by importance and keep top points
-                importance_sorted = importance.argsort()[::-1]
-                top_indices = importance_sorted[:remaining_points]
-                keep_indices.update(top_indices)
-            
-            # Convert to sorted list
-            keep_indices = sorted(list(keep_indices))
-            
-            # Return optimized data
-            optimized_data = data.iloc[keep_indices].copy()
-            
-            logger.debug(f"Chart optimization: kept {len(optimized_data)} of {len(data)} points")
-            return optimized_data
-            
-        except Exception as e:
-            logger.warning(f"Error optimizing chart data: {e}")
-            # Fallback to simple sampling
-            try:
-                step = max(1, len(data) // max_points)
-                return data.iloc[::step].copy()
-            except Exception:
-                return data
-    
-    def enable_pattern_click_navigation(
-        self, 
-        fig: go.Figure, 
-        patterns: List[PatternResult],
-        callback_function: Optional[Callable] = None
-    ) -> go.Figure:
-        """
-        Enable click-to-navigate functionality for patterns.
-        
-        Note: This prepares the chart for click navigation.
-        Actual navigation requires frontend integration.
-        
-        Args:
-            fig: Figure to enhance
-            patterns: List of patterns
-            callback_function: Optional callback for click events
-            
-        Returns:
-            Enhanced figure with click navigation setup
-        """
-        try:
-            # Add custom data attributes for click handling
-            for trace in fig.data:
-                if hasattr(trace, 'name') and any(
-                    pattern_type.replace('_', ' ').title() in str(trace.name) 
-                    for pattern_type in [p.pattern_type for p in patterns]
-                ):
-                    # Add custom data for click handling
-                    if hasattr(trace, 'customdata'):
-                        trace.customdata = [
-                            {'pattern_index': i, 'navigable': True}
-                            for i in range(len(trace.x))
-                        ]
-            
-            # Update layout for click events
-            fig.update_layout(
-                clickmode='event+select',
-                annotations=[
-                    dict(
-                        text="Click on pattern markers to navigate",
-                        xref="paper", yref="paper",
-                        x=0.02, y=0.98,
-                        xanchor='left', yanchor='top',
-                        showarrow=False,
-                        font=dict(size=10, color="gray"),
-                        bgcolor="rgba(255,255,255,0.8)"
-                    )
-                ]
-            )
-            
-            logger.info("Enabled click navigation interface")
-            return fig
-            
-        except Exception as e:
-            logger.error(f"Error enabling click navigation: {e}")
-            return fig
+    def _create_empty_chart(self, title: str, height: int) -> go.Figure:
+        """Create an empty chart with a message."""
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No data available",
+            x=0.5,
+            y=0.5,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=16, color="gray")
+        )
+        fig.update_layout(
+            title=title,
+            height=height,
+            showlegend=False,
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        return fig

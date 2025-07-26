@@ -8,8 +8,8 @@ It provides command-line interface to access different modes:
 - Export mode: Runs the command-line export tool
 
 Usage:
-    python3 main.py -gui        # Launch Streamlit GUI
-    python3 main.py -export     # Launch export CLI
+    python3 main.py --gui       # Launch Streamlit GUI
+    python3 main.py --export    # Launch export CLI
     python3 main.py --help      # Show help
 """
 
@@ -34,10 +34,10 @@ def parse_arguments() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python3 main.py -gui                    # Launch web interface
-    python3 main.py -export                 # Launch export CLI
-    python3 main.py -export --batch         # Run batch export
-    python3 main.py -export --help          # Show export help
+    python3 main.py --gui                   # Launch web interface
+    python3 main.py --export                # Launch export CLI
+    python3 main.py --export --batch        # Run batch export
+    python3 main.py --export --help         # Show export help
         """
     )
     
