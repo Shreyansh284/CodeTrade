@@ -23,7 +23,6 @@ class PatternResult:
     confidence: float
     timeframe: str
     candle_index: int
-    description: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert pattern result to dictionary format."""
@@ -32,8 +31,23 @@ class PatternResult:
             'pattern_type': self.pattern_type,
             'confidence': self.confidence,
             'timeframe': self.timeframe,
-            'candle_index': self.candle_index,
-            'description': self.description
+            'candle_index': self.candle_index
+        }
+    
+    def to_csv_row(self) -> Dict[str, Any]:
+        """Convert pattern result to CSV export format."""
+        # Handle datetime formatting safely
+        if hasattr(self.datetime, 'strftime'):
+            datetime_str = self.datetime.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            datetime_str = str(self.datetime)
+            
+        return {
+            'datetime': datetime_str,
+            'pattern_type': self.pattern_type.replace('_', ' ').title(),
+            'confidence': f"{self.confidence:.3f}",
+            'timeframe': self.timeframe,
+            'candle_index': self.candle_index
         }
 
 
@@ -48,7 +62,7 @@ class BasePatternDetector(ABC):
             min_confidence: Minimum confidence threshold for pattern detection
         """
         self.min_confidence = min_confidence
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
     
     @abstractmethod
     def get_pattern_name(self) -> str:
@@ -176,12 +190,11 @@ class BasePatternDetector(ABC):
                 if confidence is not None and confidence >= self.min_confidence:
                     try:
                         pattern_result = PatternResult(
-                            datetime=data.index[i],
+                            datetime=data.iloc[i]['datetime'] if 'datetime' in data.columns else data.index[i],
                             pattern_type=pattern_name.lower().replace(' ', '_'),
                             confidence=confidence,
                             timeframe=timeframe,
-                            candle_index=i,
-                            description=self._get_pattern_description()
+                            candle_index=i
                         )
                         patterns.append(pattern_result)
                         
@@ -467,12 +480,11 @@ class BasePatternDetector(ABC):
                     
                     if confidence is not None and confidence >= self.min_confidence:
                         pattern_result = PatternResult(
-                            datetime=data.index[idx],
+                            datetime=data.iloc[idx]['datetime'] if 'datetime' in data.columns else data.index[idx],
                             pattern_type=pattern_name.lower().replace(' ', '_'),
                             confidence=confidence,
                             timeframe=timeframe,
-                            candle_index=idx,
-                            description=self._get_pattern_description()
+                            candle_index=idx
                         )
                         patterns.append(pattern_result)
                         

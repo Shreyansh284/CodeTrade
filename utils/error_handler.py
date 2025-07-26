@@ -57,6 +57,11 @@ class VisualizationError(ApplicationError):
     pass
 
 
+class ExportError(ApplicationError):
+    """Exception raised when export operations fail."""
+    pass
+
+
 class ErrorHandler:
     """
     Centralized error handling and user feedback manager.
@@ -133,6 +138,28 @@ class ErrorHandler:
                 ]
             },
             
+            # Export errors
+            "EXPORT_FAILED": {
+                "title": "📤 Export Failed",
+                "message": "Unable to export the pattern detection results.",
+                "suggestions": [
+                    "Check if you have write permissions in the export directory",
+                    "Ensure there is sufficient disk space available",
+                    "Try exporting with a different filename",
+                    "Verify that the pattern detection results are valid"
+                ]
+            },
+            "EXPORT_VALIDATION_FAILED": {
+                "title": "📋 Export Validation Failed",
+                "message": "The export data failed validation checks.",
+                "suggestions": [
+                    "Check that pattern detection completed successfully",
+                    "Verify that all required data fields are present",
+                    "Try running the analysis again",
+                    "Contact support if the problem persists"
+                ]
+            },
+            
             # General errors
             "PROCESSING_TIMEOUT": {
                 "title": "⏱️ Processing Timeout",
@@ -190,6 +217,8 @@ class ErrorHandler:
                 error_code = error.error_code or "PATTERN_DETECTION_FAILED"
             elif isinstance(error, VisualizationError):
                 error_code = error.error_code or "CHART_RENDER_FAILED"
+            elif isinstance(error, ExportError):
+                error_code = error.error_code or "EXPORT_FAILED"
             
             # Show user-friendly message
             if show_user_message:

@@ -1,0 +1,1 @@
+# UI module for Stock Pattern Detector
