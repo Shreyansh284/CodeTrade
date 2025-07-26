@@ -92,51 +92,148 @@ class CSVLoader:
         logger.info(f"Found {len(instruments)} valid instruments: {instruments}")
         return sorted(instruments)
     
-    def load_instrument_data(self, instrument: str) -> Optional[pd.DataFrame]:
+    @with_error_handling(
+        error_types=(OSError, PermissionError, Exception),
+        context="get_available_dates",
+        fallback_result=[]
+    )
+    def get_available_dates(self, instrument: str) -> List[datetime]:
+        """
+        Get available dates for a specific instrument by scanning CSV filenames.
+        
+        Args:
+            instrument: Name of the instrument (folder name)
+            
+        Returns:
+            List of datetime objects representing available dates
+        """
+        if not instrument or not isinstance(instrument, str):
+            raise DataLoadingError(
+                "Invalid instrument name provided",
+                error_code="INVALID_INSTRUMENT_NAME",
+                context={'instrument': instrument}
+            )
+        
+        instrument_path = self.data_directory / instrument
+        
+        if not instrument_path.exists():
+            raise DataLoadingError(
+                f"Instrument directory '{instrument}' does not exist",
+                error_code="INSTRUMENT_NOT_FOUND",
+                context={'instrument': instrument, 'path': str(instrument_path)}
+            )
+        
+        csv_files = list(instrument_path.glob("*.csv"))
+        if not csv_files:
+            raise DataLoadingError(
+                f"No CSV files found for instrument '{instrument}'",
+                error_code="NO_CSV_FILES",
+                context={'instrument': instrument, 'path': str(instrument_path)}
+            )
+        
+        dates = []
+        for csv_file in csv_files:
+            try:
+                # Extract date from filename (format: DD-MM-YYYY.csv)
+                filename = csv_file.stem  # Remove .csv extension
+                date_obj = datetime.strptime(filename, '%d-%m-%Y')
+                dates.append(date_obj.date())
+            except ValueError as e:
+                logger.warning(f"Could not parse date from filename {csv_file.name}: {e}")
+                continue
+        
+        if not dates:
+            raise DataLoadingError(
+                f"No valid date files found for instrument '{instrument}'",
+                error_code="NO_VALID_DATES",
+                context={'instrument': instrument, 'path': str(instrument_path)}
+            )
+        
+        logger.info(f"Found {len(dates)} available dates for {instrument}")
+        return sorted(dates)
+    
+    def load_instrument_data(self, instrument: str, start_date: Optional[datetime] = None, 
+                            end_date: Optional[datetime] = None) -> Optional[pd.DataFrame]:
         """
         Load all CSV files for a specific instrument and combine into single DataFrame.
         Uses caching to avoid reloading unchanged data.
         
         Args:
             instrument: Name of the instrument (folder name)
+            start_date: Optional start date for filtering data (inclusive)
+            end_date: Optional end date for filtering data (inclusive)
             
         Returns:
             Combined DataFrame with all data for the instrument, or None if error
         """
         start_time = time.time()
         
-        # Generate cache key for this instrument
-        cache_key = f"instrument_data_{instrument}_{self.data_directory.name}"
+        # Generate cache key including date range for proper caching
+        date_suffix = ""
+        if start_date or end_date:
+            start_str = start_date.strftime('%Y%m%d') if start_date else "start"
+            end_str = end_date.strftime('%Y%m%d') if end_date else "end"
+            date_suffix = f"_{start_str}_{end_str}"
         
-        # Get list of CSV files for cache invalidation
+        cache_key = f"instrument_data_{instrument}_{self.data_directory.name}{date_suffix}"
+        
+        # Get list of CSV files for cache invalidation and date filtering
         instrument_path = self.data_directory / instrument
-        source_files = []
-        if instrument_path.exists():
-            source_files = [str(f) for f in instrument_path.glob("*.csv")]
         
-        # Try to get from cache first
-        cached_data = cache_manager.get(cache_key)
-        if cached_data is not None:
-            # Verify cache is still valid by checking file modification times
-            cache_valid = True
-            try:
-                cache_path = cache_manager._get_file_cache_path(cache_key)
-                if cache_path.exists():
-                    cache_mtime = cache_path.stat().st_mtime
-                    for source_file in source_files:
-                        if Path(source_file).stat().st_mtime > cache_mtime:
-                            cache_valid = False
-                            break
-            except Exception:
-                cache_valid = False
-            
-            if cache_valid:
-                cache_time = time.time() - start_time
-                logger.info(f"Loaded {instrument} from cache in {cache_time:.3f}s ({len(cached_data)} records)")
-                return cached_data
-            else:
-                # Invalidate stale cache
-                cache_manager.invalidate(cache_key)
+        # Filter CSV files based on date range if provided
+        all_csv_files = []
+        if instrument_path.exists():
+            all_csv_files = list(instrument_path.glob("*.csv"))
+        
+        # Filter files by date range if specified
+        csv_files = []
+        if start_date or end_date:
+            for csv_file in all_csv_files:
+                try:
+                    # Extract date from filename (format: DD-MM-YYYY.csv)
+                    filename = csv_file.stem  # Remove .csv extension
+                    file_date = datetime.strptime(filename, '%d-%m-%Y').date()
+                    
+                    # Check if file date is within range
+                    if start_date and file_date < start_date:
+                        continue
+                    if end_date and file_date > end_date:
+                        continue
+                    
+                    csv_files.append(csv_file)
+                except ValueError:
+                    # Skip files with invalid date formats
+                    logger.warning(f"Skipping file with invalid date format: {csv_file.name}")
+                    continue
+        else:
+            csv_files = all_csv_files
+        
+        source_files = [str(f) for f in csv_files]
+        
+        # Try to get from cache first (only if no date filtering for now - full data cache)
+        if not start_date and not end_date:
+            cached_data = cache_manager.get(cache_key)
+            if cached_data is not None:
+                # Verify cache is still valid by checking file modification times
+                cache_valid = True
+                try:
+                    cache_path = cache_manager._get_file_cache_path(cache_key)
+                    if cache_path.exists():
+                        cache_mtime = cache_path.stat().st_mtime
+                        for source_file in source_files:
+                            if Path(source_file).stat().st_mtime > cache_mtime:
+                                cache_valid = False
+                                break
+                except Exception:
+                    cache_valid = False
+                
+                if cache_valid:
+                    cache_time = time.time() - start_time
+                    logger.info(f"Loaded {instrument} from cache in {cache_time:.3f}s ({len(cached_data)} records)")
+                    return cached_data
+                else:
+                    # Invalidate stale cache
+                    cache_manager.invalidate(cache_key)
         
         try:
             # Validate input
@@ -157,18 +254,37 @@ class CSVLoader:
                 )
             
             # Show progress indicator
+            date_info = ""
+            if start_date and end_date:
+                date_info = f" ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')})"
+            elif start_date:
+                date_info = f" (from {start_date.strftime('%d-%m-%Y')})"
+            elif end_date:
+                date_info = f" (until {end_date.strftime('%d-%m-%Y')})"
+            
             progress_placeholder = st.empty()
-            progress_placeholder.info(f"📥 Loading data for {instrument}...")
+            progress_placeholder.info(f"📥 Loading data for {instrument}{date_info}...")
             
-            csv_files = list(instrument_path.glob("*.csv"))
             if not csv_files:
-                raise DataLoadingError(
-                    f"No CSV files found for instrument '{instrument}'",
-                    error_code="NO_CSV_FILES",
-                    context={'instrument': instrument, 'path': str(instrument_path)}
-                )
+                if start_date or end_date:
+                    raise DataLoadingError(
+                        f"No CSV files found for instrument '{instrument}' in the specified date range",
+                        error_code="NO_CSV_FILES_IN_RANGE",
+                        context={
+                            'instrument': instrument, 
+                            'path': str(instrument_path),
+                            'start_date': start_date,
+                            'end_date': end_date
+                        }
+                    )
+                else:
+                    raise DataLoadingError(
+                        f"No CSV files found for instrument '{instrument}'",
+                        error_code="NO_CSV_FILES",
+                        context={'instrument': instrument, 'path': str(instrument_path)}
+                    )
             
-            logger.info(f"Loading {len(csv_files)} CSV files for {instrument}")
+            logger.info(f"Loading {len(csv_files)} CSV files for {instrument}{date_info}")
             
             # Load files with progress tracking
             dataframes = []

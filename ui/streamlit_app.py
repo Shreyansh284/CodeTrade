@@ -10,8 +10,8 @@ import streamlit as st
 import pandas as pd
 import os
 import sys
-from datetime import datetime
-from typing import List, Dict, Any
+from datetime import datetime, date
+from typing import List, Dict, Any, Optional
 import time
 
 # Add parent directory to path for imports
@@ -107,6 +107,73 @@ def create_sidebar():
         help="Choose the stock to analyze"
     )
     
+    # Date range selection
+    st.sidebar.subheader("📅 Date Range")
+    
+    # Get available dates for selected instrument
+    available_dates = []
+    try:
+        available_dates = st.session_state.data_loader.get_available_dates(selected_instrument)
+        if not available_dates:
+            st.sidebar.error("No dates available for selected instrument")
+            return None
+    except Exception as e:
+        st.sidebar.error(f"Error loading dates: {e}")
+        logger.error(f"Error getting available dates for {selected_instrument}: {e}")
+        return None
+    
+    # Date range selection option
+    date_selection_mode = st.sidebar.radio(
+        "Select Date Range Mode:",
+        options=["All Available Data", "Custom Date Range"],
+        help="Choose whether to use all data or select specific date range"
+    )
+    
+    start_date = None
+    end_date = None
+    
+    if date_selection_mode == "Custom Date Range":
+        min_date = min(available_dates)
+        max_date = max(available_dates)
+        
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            start_date = st.date_input(
+                "Start Date",
+                value=min_date,
+                min_value=min_date,
+                max_value=max_date,
+                help="Select starting date for analysis"
+            )
+        with col2:
+            end_date = st.date_input(
+                "End Date",
+                value=max_date,
+                min_value=min_date,
+                max_value=max_date,
+                help="Select ending date for analysis"
+            )
+        
+        # Validate date range
+        if start_date > end_date:
+            st.sidebar.error("⚠️ Start date must be before end date!")
+            return None
+        
+        # Filter available dates to only include those in the selected range
+        dates_in_range = [d for d in available_dates if start_date <= d <= end_date]
+        if not dates_in_range:
+            st.sidebar.error("⚠️ No data available in the selected date range!")
+            return None
+        
+        # Show selected date range info
+        st.sidebar.info(f"📊 Selected: {len(dates_in_range)} day(s) of data")
+    else:
+        # Show info about all available data
+        total_days = len(available_dates)
+        date_range = f"{min(available_dates).strftime('%d-%m-%Y')} to {max(available_dates).strftime('%d-%m-%Y')}"
+        st.sidebar.info(f"📊 Using all data: {total_days} day(s)")
+        st.sidebar.caption(f"Range: {date_range}")
+    
     # Timeframe selection
     timeframes = st.session_state.data_aggregator.get_supported_timeframes()
     selected_timeframe = st.sidebar.selectbox(
@@ -162,7 +229,10 @@ def create_sidebar():
         'patterns': selected_patterns,
         'max_candles': max_candles,
         'chart_height': chart_height,
-        'run_analysis': run_analysis
+        'run_analysis': run_analysis,
+        'date_mode': date_selection_mode,
+        'start_date': start_date,
+        'end_date': end_date
     }
 
 
@@ -235,6 +305,9 @@ def run_analysis(config: Dict[str, Any]):
     instrument = config['instrument']
     timeframe = config['timeframe']
     patterns = config['patterns']
+    date_mode = config['date_mode']
+    start_date = config['start_date']
+    end_date = config['end_date']
     
     # Check if any patterns are selected
     selected_pattern_names = [name for name, selected in patterns.items() if selected]
@@ -245,18 +318,42 @@ def run_analysis(config: Dict[str, Any]):
     # Progress tracking
     progress_container = st.container()
     with progress_container:
-        st.markdown(f"### 📊 Analyzing {instrument} - {timeframe}")
+        date_info = ""
+        if date_mode == "Custom Date Range" and start_date and end_date:
+            date_info = f" ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')})"
+        
+        st.markdown(f"### 📊 Analyzing {instrument} - {timeframe}{date_info}")
         progress_bar = st.progress(0)
         status_text = st.empty()
     
     try:
-        # Load data
+        # Load data with optional date filtering
         status_text.info("📥 Loading data...")
         progress_bar.progress(20)
         
-        data = st.session_state.data_loader.load_instrument_data(instrument)
+        # Convert date objects for the loader if needed
+        start_datetime = None
+        end_datetime = None
+        
+        if date_mode == "Custom Date Range":
+            if start_date:
+                # start_date is already a date object from st.date_input
+                start_datetime = start_date
+            if end_date:
+                # end_date is already a date object from st.date_input
+                end_datetime = end_date
+        
+        data = st.session_state.data_loader.load_instrument_data(
+            instrument, 
+            start_date=start_datetime, 
+            end_date=end_datetime
+        )
+        
         if data is None or data.empty:
-            st.error(f"❌ No data available for {instrument}")
+            if date_mode == "Custom Date Range":
+                st.error(f"❌ No data available for {instrument} in the selected date range")
+            else:
+                st.error(f"❌ No data available for {instrument}")
             return
         
         # Aggregate data
@@ -301,6 +398,13 @@ def run_analysis(config: Dict[str, Any]):
 def display_results(instrument: str, timeframe: str, data: pd.DataFrame, 
                    patterns: List[PatternResult], config: Dict[str, Any]):
     """Display analysis results with clean layout"""
+    
+    # Show date range info if custom range was used
+    if config.get('date_mode') == "Custom Date Range":
+        start_date = config.get('start_date')
+        end_date = config.get('end_date')
+        if start_date and end_date:
+            st.info(f"📅 Analysis period: {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')} ({(end_date - start_date).days + 1} days)")
     
     # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
