@@ -8,6 +8,8 @@ from .hammer import HammerDetector
 from .rising_window import RisingWindowDetector
 from .evening_star import EveningStarDetector
 from .three_white_soldiers import ThreeWhiteSoldiersDetector
+from .double_top import DoubleTopDetector
+from .double_bottom import DoubleBottomDetector
 
 __all__ = [
     'BasePatternDetector',
@@ -16,5 +18,7 @@ __all__ = [
     'HammerDetector',
     'RisingWindowDetector',
     'EveningStarDetector',
-    'ThreeWhiteSoldiersDetector'
+    'ThreeWhiteSoldiersDetector',
+    'DoubleTopDetector',
+    'DoubleBottomDetector'
 ]

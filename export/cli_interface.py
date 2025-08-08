@@ -16,6 +16,8 @@ from patterns.hammer import HammerDetector
 from patterns.rising_window import RisingWindowDetector
 from patterns.evening_star import EveningStarDetector
 from patterns.three_white_soldiers import ThreeWhiteSoldiersDetector
+from patterns.double_top import DoubleTopDetector
+from patterns.double_bottom import DoubleBottomDetector
 from export.csv_exporter import CSVExporter
 from utils.logging_config import get_logger
 from utils.error_handler import ExportError, safe_execute
@@ -47,7 +49,9 @@ class CommandLineInterface:
             'hammer': HammerDetector(),
             'rising_window': RisingWindowDetector(),
             'evening_star': EveningStarDetector(),
-            'three_white_soldiers': ThreeWhiteSoldiersDetector()
+            'three_white_soldiers': ThreeWhiteSoldiersDetector(),
+            'double_top': DoubleTopDetector(),
+            'double_bottom': DoubleBottomDetector()
         }
         
         # Available timeframes

@@ -25,6 +25,8 @@ from patterns.hammer import HammerDetector
 from patterns.rising_window import RisingWindowDetector
 from patterns.evening_star import EveningStarDetector
 from patterns.three_white_soldiers import ThreeWhiteSoldiersDetector
+from patterns.double_top import DoubleTopDetector
+from patterns.double_bottom import DoubleBottomDetector
 from patterns.base import PatternResult
 from visualization.charts import ChartRenderer
 from utils.logging_config import get_logger
@@ -45,7 +47,9 @@ PATTERN_DETECTORS = {
     'Hammer': HammerDetector(),
     'Rising Window': RisingWindowDetector(),
     'Evening Star': EveningStarDetector(),
-    'Three White Soldiers': ThreeWhiteSoldiersDetector()
+    'Three White Soldiers': ThreeWhiteSoldiersDetector(),
+    'Double Top': DoubleTopDetector(),
+    'Double Bottom': DoubleBottomDetector()
 }
 
 

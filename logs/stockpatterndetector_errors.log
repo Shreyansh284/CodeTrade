@@ -1,0 +1,81 @@
+2025-07-27 16:09:44 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:09:46 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:11:43 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:12:24 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:12:35 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:12:36 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:15:06 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:15:39 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+2025-07-27 16:16:22 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+Traceback (most recent call last):
+  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
+    result = func(*args, **kwargs)
+  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
+    raise DataLoadingError(
+    ...<3 lines>...
+    )
+utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
