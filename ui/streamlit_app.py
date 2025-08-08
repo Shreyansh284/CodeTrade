@@ -27,6 +27,8 @@ from patterns.evening_star import EveningStarDetector
 from patterns.three_white_soldiers import ThreeWhiteSoldiersDetector
 from patterns.double_top import DoubleTopDetector
 from patterns.double_bottom import DoubleBottomDetector
+from patterns.head_and_shoulders import HeadAndShouldersDetector
+from patterns.inverse_head_and_shoulders import InverseHeadAndShouldersDetector
 from patterns.base import PatternResult
 from visualization.charts import ChartRenderer
 from utils.logging_config import get_logger
@@ -49,7 +51,9 @@ PATTERN_DETECTORS = {
     'Evening Star': EveningStarDetector(),
     'Three White Soldiers': ThreeWhiteSoldiersDetector(),
     'Double Top': DoubleTopDetector(),
-    'Double Bottom': DoubleBottomDetector()
+    'Double Bottom': DoubleBottomDetector(),
+    'Head and Shoulders': HeadAndShouldersDetector(),
+    'Inverse Head and Shoulders': InverseHeadAndShouldersDetector()
 }
 
 

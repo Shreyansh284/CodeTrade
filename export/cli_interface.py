@@ -18,6 +18,8 @@ from patterns.evening_star import EveningStarDetector
 from patterns.three_white_soldiers import ThreeWhiteSoldiersDetector
 from patterns.double_top import DoubleTopDetector
 from patterns.double_bottom import DoubleBottomDetector
+from patterns.head_and_shoulders import HeadAndShouldersDetector
+from patterns.inverse_head_and_shoulders import InverseHeadAndShouldersDetector
 from export.csv_exporter import CSVExporter
 from utils.logging_config import get_logger
 from utils.error_handler import ExportError, safe_execute
@@ -51,7 +53,9 @@ class CommandLineInterface:
             'evening_star': EveningStarDetector(),
             'three_white_soldiers': ThreeWhiteSoldiersDetector(),
             'double_top': DoubleTopDetector(),
-            'double_bottom': DoubleBottomDetector()
+            'double_bottom': DoubleBottomDetector(),
+            'head_and_shoulders': HeadAndShouldersDetector(),
+            'inverse_head_and_shoulders': InverseHeadAndShouldersDetector()
         }
         
         # Available timeframes
