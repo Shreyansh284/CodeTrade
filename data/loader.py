@@ -44,6 +44,14 @@ class CSVLoader:
         Args:
             data_directory: Preferred data directory (defaults to new StockData flat structure)
         """
+        # Allow environment variable override if caller used default
+        env_dir = os.getenv("DATA_DIR")
+        if data_directory == "StockData" and env_dir:
+            env_path = Path(env_dir)
+            if env_path.exists():
+                data_directory = env_dir
+                logger.info(f"Using DATA_DIR environment override: {env_dir}")
+
         preferred = Path(data_directory)
         # Fallback to legacy directory if preferred doesn't exist
         if not preferred.exists() and data_directory == "StockData":

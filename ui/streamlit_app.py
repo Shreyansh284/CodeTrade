@@ -98,36 +98,58 @@ def create_sidebar():
     """Create clean sidebar configuration"""
     st.sidebar.header("📊 Configuration")
     
-    # Get available instruments
+    # Get available instruments with optional filter
     try:
-        instruments = st.session_state.data_loader.get_available_instruments()
-        if not instruments:
+        instruments_all = st.session_state.data_loader.get_available_instruments()
+        if not instruments_all:
             st.sidebar.error("No instruments found")
             return None
     except Exception as e:
         st.sidebar.error(f"Error loading instruments: {e}")
         return None
-    
-    # Instrument selection
-    selected_instrument = st.sidebar.selectbox(
-        "📈 Select Stock",
-        instruments,
-        help="Choose the stock to analyze"
-    )
+
+    search_term = st.sidebar.text_input("🔎 Filter Stocks", "", help="Type part of symbol to filter list")
+    if search_term:
+        instruments = [s for s in instruments_all if search_term.lower() in s.lower()]
+        if not instruments:
+            st.sidebar.warning("No matches for filter")
+            instruments = instruments_all
+    else:
+        instruments = instruments_all
+
+    loader = st.session_state.data_loader
+    multi_mode = getattr(loader, 'flat_mode', False)
+    if multi_mode:
+        selected_instruments = st.sidebar.multiselect(
+            "📈 Select Stock(s)",
+            instruments,
+            default=instruments[:1],
+            help="Choose one or more stocks to analyze"
+        )
+    else:
+        selected_instruments = [st.sidebar.selectbox(
+            "📈 Select Stock",
+            instruments,
+            help="Choose the stock to analyze"
+        )]
     
     # Date range selection
     st.sidebar.subheader("📅 Date Range")
     
-    # Get available dates for selected instrument
+    # Get available dates for primary selected instrument
     available_dates = []
+    primary_instrument = selected_instruments[0] if selected_instruments else None
+    if not primary_instrument:
+        st.sidebar.warning("Select at least one instrument")
+        return None
     try:
-        available_dates = st.session_state.data_loader.get_available_dates(selected_instrument)
+        available_dates = st.session_state.data_loader.get_available_dates(primary_instrument)
         if not available_dates:
             st.sidebar.error("No dates available for selected instrument")
             return None
     except Exception as e:
         st.sidebar.error(f"Error loading dates: {e}")
-        logger.error(f"Error getting available dates for {selected_instrument}: {e}")
+        logger.error(f"Error getting available dates for {primary_instrument}: {e}")
         return None
     
     # Date range selection option
@@ -198,14 +220,22 @@ def create_sidebar():
         )
     
     # Pattern selection
-    st.sidebar.subheader("🔍 Patterns to Detect")
+    st.sidebar.subheader("🔍 Patterns")
     selected_patterns = {}
+    all_checked = st.sidebar.checkbox("Select All", value=True)
     for name in PATTERN_DETECTORS.keys():
         selected_patterns[name] = st.sidebar.checkbox(
             name.replace('_', ' '),
-            value=True,
+            value=all_checked,
             help=f"Detect {name} patterns"
         )
+
+    # Confidence threshold
+    confidence_threshold = st.sidebar.slider(
+        "Min Confidence", 0.0, 1.0, 0.0, 0.05,
+        help="Only show patterns with confidence >= threshold"
+    )
+
     
     # Quick settings
     st.sidebar.subheader("⚙️ Settings")
@@ -238,7 +268,8 @@ def create_sidebar():
     )
     
     return {
-        'instrument': selected_instrument,
+        'instruments': selected_instruments,
+        'instrument': selected_instruments[0],  # backward compat for single use
         'timeframe': selected_timeframe,
         'patterns': selected_patterns,
         'max_candles': max_candles,
@@ -246,7 +277,9 @@ def create_sidebar():
         'run_analysis': run_analysis,
         'date_mode': date_selection_mode,
         'start_date': start_date,
-        'end_date': end_date
+        'end_date': end_date,
+    'confidence_threshold': confidence_threshold,
+    'multi_mode': multi_mode
     }
 
 
@@ -315,7 +348,8 @@ def show_quick_preview():
 
 def run_analysis(config: Dict[str, Any]):
     """Run pattern analysis with improved UI"""
-    instrument = config['instrument']
+    instruments = config.get('instruments', [config['instrument']])
+    instrument = instruments[0]
     timeframe = config['timeframe']
     patterns = config['patterns']
     date_mode = config['date_mode']
@@ -336,85 +370,93 @@ def run_analysis(config: Dict[str, Any]):
             date_info = f" ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')})"
         
     title_tf = '' if (getattr(st.session_state.data_loader, 'flat_mode', False)) else f" - {timeframe}"
-    st.markdown(f"### 📊 Analyzing {instrument}{title_tf}{date_info}")
+    multi_suffix = '' if len(instruments) == 1 else f" (+{len(instruments)-1} more)"
+    st.markdown(f"### 📊 Analyzing {instrument}{multi_suffix}{title_tf}{date_info}")
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    try:
-        # Load data with optional date filtering
-        status_text.info("📥 Loading data...")
-        progress_bar.progress(20)
+    # Load data with optional date filtering
+    status_text.info("📥 Loading data...")
+    progress_bar.progress(20)
+
+    # Convert date objects for the loader if needed
+    start_datetime = None
+    end_datetime = None
+
+    if date_mode == "Custom Date Range":
+        if start_date:
+            # start_date is already a date object from st.date_input
+            start_datetime = start_date
+        if end_date:
+            # end_date is already a date object from st.date_input
+            end_datetime = end_date
         
-        # Convert date objects for the loader if needed
-        start_datetime = None
-        end_datetime = None
+    # Load all instruments (sequential for simplicity)
+    data_map = {}
+    for inst in instruments:
+        data_map[inst] = st.session_state.data_loader.load_instrument_data(inst, start_date=start_datetime, end_date=end_datetime)
+    data = data_map[instrument]
         
+    if data is None or data.empty:
         if date_mode == "Custom Date Range":
-            if start_date:
-                # start_date is already a date object from st.date_input
-                start_datetime = start_date
-            if end_date:
-                # end_date is already a date object from st.date_input
-                end_datetime = end_date
-        
-        data = st.session_state.data_loader.load_instrument_data(
-            instrument, 
-            start_date=start_datetime, 
-            end_date=end_datetime
-        )
-        
-        if data is None or data.empty:
-            if date_mode == "Custom Date Range":
-                st.error(f"❌ No data available for {instrument} in the selected date range")
-            else:
-                st.error(f"❌ No data available for {instrument}")
-            return
-        
-        # Aggregate data
-        if getattr(st.session_state.data_loader, 'flat_mode', False):
-            status_text.info("🔄 Preparing data (daily)...")
-            progress_bar.progress(40)
-            agg_data = data.copy()
+            st.error(f"❌ No data available for {instrument} in the selected date range")
         else:
-            status_text.info("🔄 Processing timeframe...")
-            progress_bar.progress(40)
-            agg_data = st.session_state.data_aggregator.aggregate_data(data, timeframe)
-        if agg_data is None or agg_data.empty:
-            st.error(f"❌ Failed to process {timeframe} data")
-            return
+            st.error(f"❌ No data available for {instrument}")
+        return
         
-        # Detect patterns
-        status_text.info("🔍 Detecting patterns...")
-        progress_bar.progress(60)
+    # Aggregate data
+    if getattr(st.session_state.data_loader, 'flat_mode', False):
+        status_text.info("🔄 Preparing data (daily)...")
+        progress_bar.progress(40)
+        agg_map = {inst: df.copy() for inst, df in data_map.items()}
+    else:
+        status_text.info("🔄 Processing timeframe...")
+        progress_bar.progress(40)
+        agg_map = {}
+        for inst, df in data_map.items():
+            agg_map[inst] = st.session_state.data_aggregator.aggregate_data(df, timeframe)
+    agg_data = agg_map[instrument]
+    if agg_data is None or agg_data.empty:
+        st.error(f"❌ Failed to process {timeframe} data")
+        return
         
-        all_patterns = []
+    # Detect patterns
+    status_text.info("🔍 Detecting patterns...")
+    progress_bar.progress(60)
+    
+    pattern_results_map = {}
+    cf = config['confidence_threshold']
+    for inst, df in agg_map.items():
+        inst_patterns = []
+        if df is None or df.empty:
+            pattern_results_map[inst] = []
+            continue
         for pattern_name in selected_pattern_names:
             detector = PATTERN_DETECTORS[pattern_name]
             try:
-                found_patterns = detector.detect(agg_data, timeframe)
-                all_patterns.extend(found_patterns)
+                found_patterns = detector.detect(df, timeframe)
+                found_patterns = [p for p in found_patterns if p.confidence >= cf]
+                inst_patterns.extend(found_patterns)
             except Exception as e:
-                st.warning(f"⚠️ Error detecting {pattern_name}: {e}")
+                st.warning(f"⚠️ Error detecting {pattern_name} in {inst}: {e}")
+        pattern_results_map[inst] = inst_patterns
+    all_patterns = pattern_results_map[instrument]
         
-        # Create visualization
-        status_text.info("📈 Creating chart...")
-        progress_bar.progress(80)
-        
-        # Clear progress
-        progress_bar.progress(100)
-        time.sleep(0.5)
-        progress_container.empty()
-        
-        # Display results
-        display_results(instrument, timeframe, agg_data, all_patterns, config)
-        
-    except Exception as e:
-        st.error(f"❌ Analysis failed: {e}")
-        logger.error(f"Analysis error: {e}", exc_info=True)
+    # Create visualization
+    status_text.info("📈 Creating chart...")
+    progress_bar.progress(80)
+    
+    # Clear progress
+    progress_bar.progress(100)
+    time.sleep(0.5)
+    progress_container.empty()
+    
+    # Display results
+    display_results(instrument, timeframe, agg_data, all_patterns, config, pattern_results_map if len(instruments)>1 else None)
 
 
 def display_results(instrument: str, timeframe: str, data: pd.DataFrame, 
-                   patterns: List[PatternResult], config: Dict[str, Any]):
+                   patterns: List[PatternResult], config: Dict[str, Any], multi_results: Dict[str, List[PatternResult]] = None):
     """Display analysis results with clean layout"""
     
     # Show date range info if custom range was used
@@ -456,15 +498,72 @@ def display_results(instrument: str, timeframe: str, data: pd.DataFrame,
             max_candles=config['max_candles']
         )
         st.plotly_chart(chart, use_container_width=True)
+        # Download detected patterns (if any) as CSV
+        if patterns:
+            try:
+                export_rows = []
+                for p in patterns:
+                    export_rows.append({
+                        'instrument': instrument,
+                        'datetime': p.datetime.strftime('%Y-%m-%d %H:%M:%S'),
+                        'pattern_type': p.pattern_type,
+                        'confidence': p.confidence
+                    })
+                export_df = pd.DataFrame(export_rows)
+                csv_bytes = export_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="💾 Download Patterns CSV",
+                    data=csv_bytes,
+                    file_name=f"patterns_{instrument}_{timeframe}.csv",
+                    mime='text/csv',
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.warning(f"Export unavailable: {e}")
         
     except Exception as e:
         st.error(f"❌ Error creating chart: {e}")
     
+    # Multi-instrument summary (if applicable)
+    if multi_results:
+        try:
+            st.markdown("### 🧮 Multi-Instrument Pattern Summary")
+            summary_rows = []
+            for inst, plist in multi_results.items():
+                counts = {}
+                for p in plist:
+                    counts[p.pattern_type] = counts.get(p.pattern_type, 0) + 1
+                summary_rows.append({
+                    'Instrument': inst,
+                    'Total': len(plist),
+                    **{k.replace('_',' ').title(): v for k, v in counts.items()}
+                })
+            if summary_rows:
+                summary_df = pd.DataFrame(summary_rows).sort_values('Total', ascending=False)
+                st.dataframe(summary_df, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Summary error: {e}")
+
     # Pattern details
     if patterns:
         display_pattern_details(patterns, data, config)
     else:
         st.info("ℹ️ No patterns detected in the selected timeframe")
+
+    # Instrument summary (always show at bottom)
+    try:
+        info = st.session_state.data_loader.get_data_info(instrument)
+        if info:
+            with st.expander("📄 Instrument Data Summary"):
+                st.write({
+                    'Records': info.get('total_records'),
+                    'Date Range': info.get('date_range'),
+                    'Price Range': info.get('price_range'),
+                    'Total Volume': info.get('total_volume'),
+                    'Price Change %': round(info.get('price_change_pct', 0.0), 2)
+                })
+    except Exception:
+        pass
 
 
 def display_pattern_details(patterns: List[PatternResult], data: pd.DataFrame, config: Dict[str, Any]):
