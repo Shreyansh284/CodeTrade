@@ -254,10 +254,15 @@ def validate_environment() -> bool:
             return False
         
         # Check if data directory has content
-        data_dir = '5Scripts'
-        if not os.path.exists(data_dir):
-            print(f"⚠️  Warning: Data directory '{data_dir}' not found.")
-            print("   You may need to add your CSV data files to this directory.")
+        # Prefer new StockData directory, fallback warn if neither present
+        new_dir = 'StockData'
+        legacy_dir = '5Scripts'
+        if not os.path.exists(new_dir):
+            if os.path.exists(legacy_dir):
+                print(f"ℹ️  Using legacy data directory '{legacy_dir}'. Consider migrating to 'StockData'.")
+            else:
+                print("⚠️  Warning: No data directory found ('StockData' or '5Scripts').")
+                print("   Add your CSV files to 'StockData' (flat daily) or '5Scripts' (legacy).")
         
         return True
         

@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 class CommandLineInterface:
     """Handles command-line export operations for pattern detection."""
     
-    def __init__(self, data_directory: str = "5Scripts"):
+    def __init__(self, data_directory: str = "StockData"):
         """
         Initialize CLI interface.
         
@@ -59,7 +59,11 @@ class CommandLineInterface:
         }
         
         # Available timeframes
-        self.timeframes = ['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day']
+        # If loader is in flat_mode restrict to daily timeframe to avoid misleading options
+        if getattr(self.csv_loader, 'flat_mode', False):
+            self.timeframes = ['1day']
+        else:
+            self.timeframes = ['1min', '5min', '15min', '1hour', '2hour', '5hour', '1day']
     
     def get_available_instruments(self) -> List[str]:
         """

@@ -178,13 +178,16 @@ def test_double_bottom_detector():
 
 
 def test_with_real_data():
-    """Test with real data from the 5Scripts directory."""
+    """Test with real data from StockData (or fallback 5Scripts)."""
     print("\nTesting with real data...")
     
     try:
-        # Try to load some real data
-        loader = CSVLoader("5Scripts")
+        # Attempt new flat directory first, fallback to legacy
+        loader = CSVLoader("StockData")
         instruments = loader.get_available_instruments()
+        if not instruments:
+            loader = CSVLoader("5Scripts")
+            instruments = loader.get_available_instruments()
         
         if instruments:
             # Use first available instrument

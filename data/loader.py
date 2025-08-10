@@ -24,22 +24,48 @@ logger = get_logger(__name__)
 
 
 class CSVLoader:
+    """CSV Loader supporting two directory paradigms.
+
+    Modes:
+    1. Legacy intraday mode ("5Scripts")
+       - Directory structure: <root>/<INSTRUMENT>/<DD-MM-YYYY>.csv (per-day, per-instrument, intraday rows containing date+time columns)
+    2. Flat daily mode ("StockData")
+       - Directory structure: <root>/<INSTRUMENT>.csv (one file per instrument with daily OHLCV rows, single Date column)
+
+    The loader auto-detects which mode to use based on the presence of CSV files
+    directly under the root versus instrument subdirectories. Backwards compatible:
+    If the requested directory does not exist but the legacy directory does, it
+    falls back automatically.
     """
-    Handles loading and validation of stock data from CSV files.
-    
-    The loader scans the 5Scripts directory for available instruments and
-    loads their historical data with proper date/time parsing and validation.
-    """
-    
-    def __init__(self, data_directory: str = "5Scripts"):
-        """
-        Initialize the CSV loader.
-        
+
+    def __init__(self, data_directory: str = "StockData"):
+        """Initialize the CSV loader with auto mode detection.
+
         Args:
-            data_directory: Path to the directory containing instrument folders
+            data_directory: Preferred data directory (defaults to new StockData flat structure)
         """
-        self.data_directory = Path(data_directory)
+        preferred = Path(data_directory)
+        # Fallback to legacy directory if preferred doesn't exist
+        if not preferred.exists() and data_directory == "StockData":
+            legacy = Path("5Scripts")
+            if legacy.exists():
+                preferred = legacy
+        self.data_directory = preferred
+
+        # Mode detection: flat daily if CSVs at root level and (a) no subdirs with CSVs or (b) majority of entries are CSVs
+        root_csvs = list(self.data_directory.glob("*.csv")) if self.data_directory.exists() else []
+        subdir_with_csv = False
+        for item in self.data_directory.iterdir() if self.data_directory.exists() else []:
+            if item.is_dir() and list(item.glob("*.csv")):
+                subdir_with_csv = True
+                break
+        self.flat_mode = len(root_csvs) > 0 and not subdir_with_csv
+
+        # Standard required columns for legacy intraday mode
         self.required_columns = ['date', 'time', 'open', 'high', 'low', 'close', 'volume']
+        # Required columns for flat daily mode (after normalization to lowercase)
+        self.required_daily_columns = ['date', 'open', 'high', 'low', 'close', 'volume']
+        logger.info(f"CSVLoader initialized in {'FLAT DAILY' if self.flat_mode else 'LEGACY'} mode using directory: {self.data_directory}")
         
     @with_error_handling(
         error_types=(OSError, PermissionError, Exception),
@@ -59,14 +85,25 @@ class CSVLoader:
                 error_code="DATA_DIRECTORY_NOT_FOUND",
                 context={'directory': str(self.data_directory)}
             )
-        
+
+        if self.flat_mode:
+            csv_files = list(self.data_directory.glob("*.csv"))
+            if not csv_files:
+                raise DataLoadingError(
+                    "No CSV files found in flat daily data directory",
+                    error_code="NO_DAILY_FILES",
+                    context={'directory': str(self.data_directory)}
+                )
+            instruments = sorted([f.stem for f in csv_files])
+            logger.info(f"Flat daily mode: {len(instruments)} instruments detected")
+            return instruments
+
+        # Legacy mode behaviour
         instruments = []
         failed_directories = []
-        
         for item in self.data_directory.iterdir():
             try:
                 if item.is_dir():
-                    # Verify directory is accessible and contains CSV files
                     csv_files = list(item.glob("*.csv"))
                     if csv_files:
                         instruments.append(item.name)
@@ -75,21 +112,21 @@ class CSVLoader:
             except (OSError, PermissionError) as e:
                 failed_directories.append(f"{item.name} (access denied)")
                 logger.warning(f"Cannot access directory {item.name}: {e}")
-        
+
         if failed_directories:
             error_handler.show_warning_message(
-                f"Some instrument directories could not be accessed",
+                "Some instrument directories could not be accessed",
                 [f"Skipped: {dir_name}" for dir_name in failed_directories]
             )
-        
+
         if not instruments:
             raise DataLoadingError(
                 "No valid instrument directories found with CSV files",
                 error_code="NO_INSTRUMENTS_FOUND",
                 context={'directory': str(self.data_directory), 'failed_dirs': failed_directories}
             )
-        
-        logger.info(f"Found {len(instruments)} valid instruments: {instruments}")
+
+        logger.info(f"Legacy mode: Found {len(instruments)} valid instruments: {instruments}")
         return sorted(instruments)
     
     @with_error_handling(
@@ -114,15 +151,61 @@ class CSVLoader:
                 context={'instrument': instrument}
             )
         
+        if self.flat_mode:
+            file_path = self.data_directory / f"{instrument}.csv"
+            if not file_path.exists():
+                raise DataLoadingError(
+                    f"Instrument file '{instrument}.csv' does not exist",
+                    error_code="INSTRUMENT_FILE_NOT_FOUND",
+                    context={'instrument': instrument, 'path': str(file_path)}
+                )
+            try:
+                # Read only Date column for efficiency
+                df_dates = pd.read_csv(file_path, usecols=['Date'])
+            except ValueError:
+                # Column may be lowercase or different; load full file then check
+                df_full = pd.read_csv(file_path)
+                date_col = None
+                for cand in ['Date', 'date']:
+                    if cand in df_full.columns:
+                        date_col = cand
+                        break
+                if not date_col:
+                    raise DataLoadingError(
+                        f"No Date column found in {file_path.name}",
+                        error_code="MISSING_DATE_COLUMN",
+                        context={'columns': list(df_full.columns)}
+                    )
+                df_dates = df_full[[date_col]].rename(columns={date_col: 'Date'})
+            # Parse dates (expecting ISO YYYY-MM-DD, fallback to DD-MM-YYYY)
+            parsed = None
+            for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d']:
+                try:
+                    parsed = pd.to_datetime(df_dates['Date'], format=fmt)
+                    break
+                except Exception:
+                    continue
+            if parsed is None:
+                parsed = pd.to_datetime(df_dates['Date'], errors='coerce', infer_datetime_format=True)
+            parsed = parsed.dropna()
+            dates = sorted(set(d.date() for d in parsed))
+            if not dates:
+                raise DataLoadingError(
+                    f"Could not parse any valid dates for instrument '{instrument}'",
+                    error_code="NO_VALID_DATES",
+                    context={'instrument': instrument, 'file': str(file_path)}
+                )
+            logger.info(f"Flat mode: {instrument} has {len(dates)} trading days")
+            return dates
+
+        # Legacy behaviour
         instrument_path = self.data_directory / instrument
-        
         if not instrument_path.exists():
             raise DataLoadingError(
                 f"Instrument directory '{instrument}' does not exist",
                 error_code="INSTRUMENT_NOT_FOUND",
                 context={'instrument': instrument, 'path': str(instrument_path)}
             )
-        
         csv_files = list(instrument_path.glob("*.csv"))
         if not csv_files:
             raise DataLoadingError(
@@ -130,26 +213,21 @@ class CSVLoader:
                 error_code="NO_CSV_FILES",
                 context={'instrument': instrument, 'path': str(instrument_path)}
             )
-        
         dates = []
         for csv_file in csv_files:
             try:
-                # Extract date from filename (format: DD-MM-YYYY.csv)
-                filename = csv_file.stem  # Remove .csv extension
+                filename = csv_file.stem
                 date_obj = datetime.strptime(filename, '%d-%m-%Y')
                 dates.append(date_obj.date())
             except ValueError as e:
                 logger.warning(f"Could not parse date from filename {csv_file.name}: {e}")
-                continue
-        
         if not dates:
             raise DataLoadingError(
                 f"No valid date files found for instrument '{instrument}'",
                 error_code="NO_VALID_DATES",
                 context={'instrument': instrument, 'path': str(instrument_path)}
             )
-        
-        logger.info(f"Found {len(dates)} available dates for {instrument}")
+        logger.info(f"Legacy mode: Found {len(dates)} available dates for {instrument}")
         return sorted(dates)
     
     def load_instrument_data(self, instrument: str, start_date: Optional[datetime] = None, 
@@ -167,6 +245,9 @@ class CSVLoader:
             Combined DataFrame with all data for the instrument, or None if error
         """
         start_time = time.time()
+        # If in flat daily mode, delegate to flat file loader
+        if self.flat_mode:
+            return self._load_flat_daily_file(instrument, start_date, end_date)
         
         # Generate cache key including date range for proper caching
         date_suffix = ""
@@ -737,6 +818,134 @@ class CSVLoader:
                 f"Unexpected error validating data in {csv_file.name}: {str(e)}",
                 error_code="DATA_VALIDATION_UNEXPECTED_ERROR",
                 context={'file': csv_file.name}
+            ) from e
+
+    # --------------------------- Flat Daily Mode Helpers ---------------------------- #
+    def _load_flat_daily_file(self, instrument: str, start_date: Optional[datetime], end_date: Optional[datetime]) -> Optional[pd.DataFrame]:
+        """Load a flat daily CSV file (<instrument>.csv) and normalize schema.
+
+        Creates a datetime column at midnight for each trading day. Applies date
+        range filtering if provided.
+        """
+        try:
+            file_path = self.data_directory / f"{instrument}.csv"
+            if not file_path.exists():
+                raise DataLoadingError(
+                    f"Instrument file not found: {instrument}.csv",
+                    error_code="INSTRUMENT_FILE_NOT_FOUND",
+                    context={'instrument': instrument, 'path': str(file_path)}
+                )
+
+            cache_key = f"daily_file_{instrument}_{self.data_directory.name}"
+            cached = cache_manager.get(cache_key)
+            if cached is not None:
+                # Filter cached data if date range specified
+                df_cached = cached
+                if start_date or end_date:
+                    mask = True
+                    if start_date:
+                        mask &= df_cached['datetime'].dt.date >= start_date
+                    if end_date:
+                        mask &= df_cached['datetime'].dt.date <= end_date
+                    filtered = df_cached[mask].reset_index(drop=True)
+                    return filtered
+                return df_cached
+
+            # Read full file
+            try:
+                df = pd.read_csv(file_path)
+            except UnicodeDecodeError:
+                df = pd.read_csv(file_path, encoding='latin-1')
+
+            # Map columns (case-insensitive)
+            col_map = {c.lower(): c for c in df.columns}
+            required_raw = {
+                'date': None,
+                'open': None,
+                'high': None,
+                'low': None,
+                'close': None,
+                'volume': None
+            }
+            for logical in required_raw.keys():
+                for actual_lower, actual in col_map.items():
+                    if actual_lower == logical:
+                        required_raw[logical] = actual
+                        break
+                # Special cases (source uses capitalized names)
+                if required_raw[logical] is None:
+                    fallback = logical.capitalize() if logical != 'volume' else 'Volume'
+                    if fallback in df.columns:
+                        required_raw[logical] = fallback
+            missing = [k for k, v in required_raw.items() if v is None]
+            if missing:
+                raise DataValidationError(
+                    f"Missing required columns in daily file {file_path.name}: {missing}",
+                    error_code="MISSING_DAILY_COLUMNS",
+                    context={'file': file_path.name, 'columns': list(df.columns)}
+                )
+
+            # Build normalized DataFrame
+            norm = pd.DataFrame({
+                'date': df[required_raw['date']].astype(str).str.strip(),
+                'open': df[required_raw['open']],
+                'high': df[required_raw['high']],
+                'low': df[required_raw['low']],
+                'close': df[required_raw['close']],
+                'volume': df[required_raw['volume']]
+            })
+
+            # Parse date to datetime (try ISO first)
+            parsed = None
+            for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d']:
+                try:
+                    parsed = pd.to_datetime(norm['date'], format=fmt)
+                    break
+                except Exception:
+                    continue
+            if parsed is None:
+                parsed = pd.to_datetime(norm['date'], errors='coerce', infer_datetime_format=True)
+            valid_mask = parsed.notna()
+            norm = norm[valid_mask].copy()
+            norm['datetime'] = parsed[valid_mask].dt.floor('D')  # midnight
+
+            # Convert numeric columns
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                norm[col] = pd.to_numeric(norm[col], errors='coerce')
+            norm = norm.dropna(subset=['open', 'high', 'low', 'close', 'volume'])
+
+            # Sort
+            norm = norm.sort_values('datetime').reset_index(drop=True)
+
+            # Optional date range filtering
+            if start_date or end_date:
+                mask = True
+                if start_date:
+                    mask &= norm['datetime'].dt.date >= start_date
+                if end_date:
+                    mask &= norm['datetime'].dt.date <= end_date
+                norm = norm[mask].reset_index(drop=True)
+                if norm.empty:
+                    return None
+
+            # Basic validation (reuse integrity checker)
+            is_valid, issues = error_handler.validate_data_integrity(norm, f"flat_daily({instrument})")
+            if not is_valid and issues:
+                error_handler.show_warning_message(
+                    f"Data quality issues detected for {instrument}",
+                    issues[:3]
+                )
+
+            cache_manager.set(cache_key, norm, ttl=1800, source_files=[str(file_path)])
+            logger.info(f"Loaded daily data for {instrument}: {len(norm)} records (cached)")
+            return norm
+        except (DataLoadingError, DataValidationError):
+            raise
+        except Exception as e:
+            raise DataLoadingError(
+                f"Unexpected error loading daily file for '{instrument}': {e}",
+                error_code="UNEXPECTED_DAILY_LOAD_ERROR",
+                context={'instrument': instrument}
             ) from e
     
     @with_error_handling(

@@ -182,14 +182,20 @@ def create_sidebar():
         st.sidebar.info(f"📊 Using all data: {total_days} day(s)")
         st.sidebar.caption(f"Range: {date_range}")
     
-    # Timeframe selection
-    timeframes = st.session_state.data_aggregator.get_supported_timeframes()
-    selected_timeframe = st.sidebar.selectbox(
-        "⏱️ Timeframe",
-        timeframes,
-        index=1,  # Default to 5min
-        help="Select analysis timeframe"
-    )
+    # Timeframe removed for flat daily mode; retain selection only if legacy intraday available
+    loader = st.session_state.data_loader
+    if getattr(loader, 'flat_mode', False):
+        selected_timeframe = '1day'
+        st.sidebar.info("Full dataset daily analysis (no timeframe selection needed).")
+    else:
+        all_timeframes = st.session_state.data_aggregator.get_supported_timeframes()
+        default_index = 1 if len(all_timeframes) > 1 else 0
+        selected_timeframe = st.sidebar.selectbox(
+            "⏱️ Timeframe",
+            all_timeframes,
+            index=default_index,
+            help="Select analysis timeframe"
+        )
     
     # Pattern selection
     st.sidebar.subheader("🔍 Patterns to Detect")
@@ -254,9 +260,8 @@ def show_welcome_screen():
         
         **Get Started:**
         1. Select a stock instrument from the sidebar
-        2. Choose your preferred timeframe
-        3. Select patterns to detect
-        4. Click "Analyze Patterns"
+    2. Select patterns to detect
+    3. Click "Analyze Patterns"
         
         **Features:**
         - 📊 Clean, readable candlestick charts
@@ -330,9 +335,10 @@ def run_analysis(config: Dict[str, Any]):
         if date_mode == "Custom Date Range" and start_date and end_date:
             date_info = f" ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')})"
         
-        st.markdown(f"### 📊 Analyzing {instrument} - {timeframe}{date_info}")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+    title_tf = '' if (getattr(st.session_state.data_loader, 'flat_mode', False)) else f" - {timeframe}"
+    st.markdown(f"### 📊 Analyzing {instrument}{title_tf}{date_info}")
+    progress_bar = st.progress(0)
+    status_text = st.empty()
     
     try:
         # Load data with optional date filtering
@@ -365,10 +371,14 @@ def run_analysis(config: Dict[str, Any]):
             return
         
         # Aggregate data
-        status_text.info("🔄 Processing timeframe...")
-        progress_bar.progress(40)
-        
-        agg_data = st.session_state.data_aggregator.aggregate_data(data, timeframe)
+        if getattr(st.session_state.data_loader, 'flat_mode', False):
+            status_text.info("🔄 Preparing data (daily)...")
+            progress_bar.progress(40)
+            agg_data = data.copy()
+        else:
+            status_text.info("🔄 Processing timeframe...")
+            progress_bar.progress(40)
+            agg_data = st.session_state.data_aggregator.aggregate_data(data, timeframe)
         if agg_data is None or agg_data.empty:
             st.error(f"❌ Failed to process {timeframe} data")
             return

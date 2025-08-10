@@ -94,8 +94,8 @@ Examples:
     parser.add_argument(
         '--data-dir',
         type=str,
-        default='5Scripts',
-        help='Data directory containing CSV files (default: 5Scripts)'
+        default='StockData',
+        help='Data directory containing CSV files (default: StockData; legacy: 5Scripts)'
     )
     
     parser.add_argument(
