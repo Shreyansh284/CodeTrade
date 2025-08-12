@@ -46,6 +46,17 @@ class ChartRenderer:
         
         self.default_pattern_style = {'color': '#888888', 'symbol': 'circle', 'size': 8}
     
+    def _get_x_values(self, data: pd.DataFrame):
+        """Return appropriate x-axis values (datetime column if present)."""
+        try:
+            if isinstance(data.index, pd.DatetimeIndex):
+                return data.index
+            if 'datetime' in data.columns:
+                return data['datetime']
+        except Exception:
+            pass
+        return data.index
+    
     def create_simple_chart(
         self, 
         data: pd.DataFrame, 
@@ -58,7 +69,7 @@ class ChartRenderer:
         Create a clean, simple candlestick chart with pattern markers.
         
         Args:
-            data: OHLCV DataFrame with datetime index
+            data: OHLCV DataFrame with datetime index or 'datetime' column
             patterns: List of detected patterns to highlight
             title: Chart title
             height: Chart height in pixels
@@ -72,11 +83,12 @@ class ChartRenderer:
                 return self._create_empty_chart(title, height)
             
             # Limit data for better performance and readability
+            original_len = len(data)
             if len(data) > max_candles:
                 data = data.tail(max_candles).copy()
                 # Adjust pattern indices if needed
                 if patterns:
-                    offset = len(data) - max_candles
+                    offset = original_len - len(data)
                     adjusted_patterns = []
                     for p in patterns:
                         if hasattr(p, 'candle_index') and p.candle_index >= offset:
@@ -94,9 +106,11 @@ class ChartRenderer:
             # Create figure
             fig = go.Figure()
             
+            x_vals = self._get_x_values(data)
+            
             # Add candlestick trace with better visibility
             fig.add_trace(go.Candlestick(
-                x=data.index,
+                x=x_vals,
                 open=data['open'],
                 high=data['high'],
                 low=data['low'],
@@ -158,11 +172,12 @@ class ChartRenderer:
     def _add_simple_pattern_markers(self, fig: go.Figure, patterns: List[PatternResult], data: pd.DataFrame):
         """Add clean pattern markers to the chart."""
         try:
+            x_vals = self._get_x_values(data)
             for pattern in patterns[:15]:  # Limit to 15 patterns for clarity
                 if not hasattr(pattern, 'candle_index') or pattern.candle_index >= len(data):
                     continue
                 
-                candle_time = data.index[pattern.candle_index]
+                candle_time = x_vals.iloc[pattern.candle_index] if hasattr(x_vals, 'iloc') else x_vals[pattern.candle_index]
                 candle_data = data.iloc[pattern.candle_index]
                 
                 # Get pattern style
@@ -201,6 +216,65 @@ class ChartRenderer:
                 
         except Exception as e:
             logger.error(f"Error adding pattern markers: {e}")
+    
+    def add_structural_segments(self, fig: go.Figure, data: pd.DataFrame, segments: List[Dict[str, Any]]):
+        """Overlay structural pattern segments as shaded regions with labels.
+        Each segment dict should include: start_idx, end_idx, pattern_type, confidence, status,
+        and optionally start_dt, end_dt for datetime boundaries.
+        """
+        try:
+            if not segments:
+                return
+            x_vals = self._get_x_values(data)
+            y_min = data['low'].min()
+            y_max = data['high'].max()
+            y_range = y_max - y_min if y_max > y_min else max(1.0, y_max)
+            for seg in segments:
+                try:
+                    s_idx = max(0, int(seg.get('start_idx', 0)))
+                    e_idx = min(len(data) - 1, int(seg.get('end_idx', len(data) - 1)))
+                    if s_idx >= e_idx:
+                        continue
+                    x0 = seg.get('start_dt') if seg.get('start_dt') is not None else (x_vals.iloc[s_idx] if hasattr(x_vals, 'iloc') else x_vals[s_idx])
+                    x1 = seg.get('end_dt') if seg.get('end_dt') is not None else (x_vals.iloc[e_idx] if hasattr(x_vals, 'iloc') else x_vals[e_idx])
+                    label = f"{seg.get('pattern_type','pattern').replace('_',' ').title()}\n{seg.get('confidence',0):.0%} {seg.get('status','')}"
+                    color = {
+                        'head_and_shoulders': 'rgba(244, 67, 54, 0.15)',
+                        'double_top': 'rgba(255, 152, 0, 0.15)',
+                        'double_bottom': 'rgba(76, 175, 80, 0.15)'
+                    }.get(seg.get('pattern_type',''), 'rgba(128,128,128,0.12)')
+                    border_color = {
+                        'head_and_shoulders': 'rgba(244, 67, 54, 0.6)',
+                        'double_top': 'rgba(255, 152, 0, 0.6)',
+                        'double_bottom': 'rgba(76, 175, 80, 0.6)'
+                    }.get(seg.get('pattern_type',''), 'rgba(128,128,128,0.6)')
+                    
+                    fig.add_vrect(x0=x0, x1=x1, fillcolor=color, line_color=border_color, opacity=0.35, layer="below")
+                    # Annotation near top of region
+                    fig.add_annotation(
+                        x=x0, y=y_max - 0.05 * y_range,
+                        xref='x', yref='y',
+                        text=label,
+                        showarrow=False,
+                        font=dict(size=11, color=border_color.replace('0.6','1.0') if isinstance(border_color, str) else '#333')
+                    )
+                except Exception as ie:
+                    logger.warning(f"Failed to draw segment: {ie}")
+        except Exception as e:
+            logger.error(f"Error overlaying structural segments: {e}")
+    
+    def create_structural_chart(
+        self,
+        data: pd.DataFrame,
+        segments: List[Dict[str, Any]],
+        title: str = "Structural Pattern Scan",
+        height: int = 500,
+        max_candles: int = 300
+    ) -> go.Figure:
+        """Create a chart and overlay structural pattern segments."""
+        fig = self.create_simple_chart(data=data, patterns=None, title=title, height=height, max_candles=max_candles)
+        self.add_structural_segments(fig, data, segments)
+        return fig
     
     def create_compact_chart(
         self,
