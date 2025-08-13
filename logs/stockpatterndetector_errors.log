@@ -1,81 +1,26 @@
-2025-07-27 16:09:44 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+2025-08-13 11:09:49 - StockPatternDetector.__main__ - [31mERROR[0m - load_instrument_data:191 - Error loading data for 360ONE: 'CSVLoader' object has no attribute 'load_data'
+2025-08-13 11:09:55 - StockPatternDetector.__main__ - [31mERROR[0m - load_instrument_data:191 - Error loading data for 3MINDIA: 'CSVLoader' object has no attribute 'load_data'
+2025-08-13 11:09:57 - StockPatternDetector.__main__ - [31mERROR[0m - load_instrument_data:191 - Error loading data for AARTIIND: 'CSVLoader' object has no attribute 'load_data'
+2025-08-13 11:10:13 - StockPatternDetector.__main__ - [31mERROR[0m - load_instrument_data:191 - Error loading data for 360ONE: 'CSVLoader' object has no attribute 'load_data'
+2025-08-13 11:16:01 - StockPatternDetector.__main__ - [31mERROR[0m - main:738 - Main application error: 'int' object has no attribute 'date'
 Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:09:46 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+  File "/Users/dhairya/Development/CodeTrade/ui/streamlit_app.py", line 728, in main
+    config = create_sidebar_config()
+  File "/Users/dhairya/Development/CodeTrade/ui/streamlit_app.py", line 306, in create_sidebar_config
+    available_start = sample_data.index.min().date()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'date'
+2025-08-13 11:17:56 - StockPatternDetector.__main__ - [31mERROR[0m - display_interactive_chart:560 - Chart error: 'ChartRenderer' object has no attribute 'create_pattern_chart'
 Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:11:43 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
+  File "/Users/dhairya/Development/CodeTrade/ui/streamlit_app.py", line 545, in display_interactive_chart
+    fig = chart_renderer.create_pattern_chart(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ChartRenderer' object has no attribute 'create_pattern_chart'. Did you mean: 'create_compact_chart'?
+2025-08-13 11:30:00 - StockPatternDetector.__main__ - [31mERROR[0m - main:739 - Main application error: name 'PATTERN_DETECTORS' is not defined
 Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:12:24 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:12:35 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:12:36 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:15:06 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:15:39 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
-2025-07-27 16:16:22 - StockPatternDetector - [31mERROR[0m - log_error:166 - ERROR in get_available_instruments: Data directory 5Scripts does not exist
-Traceback (most recent call last):
-  File "D:\My Projects\CodeTrade\CodeTrade\utils\error_handler.py", line 467, in wrapper
-    result = func(*args, **kwargs)
-  File "D:\My Projects\CodeTrade\CodeTrade\data\loader.py", line 57, in get_available_instruments
-    raise DataLoadingError(
-    ...<3 lines>...
-    )
-utils.error_handler.DataLoadingError: Data directory 5Scripts does not exist
+  File "/Users/dhairya/Development/CodeTrade/ui/streamlit_app.py", line 729, in main
+    config = create_sidebar_config()
+  File "/Users/dhairya/Development/CodeTrade/ui/streamlit_app.py", line 335, in create_sidebar_config
+    options=list(PATTERN_DETECTORS.keys()),
+                 ^^^^^^^^^^^^^^^^^
+NameError: name 'PATTERN_DETECTORS' is not defined

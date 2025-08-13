@@ -21,7 +21,14 @@ class DoubleBottomDetector(BasePatternDetector):
     """
     
     def __init__(self, min_confidence: float = 0.5, trough_tolerance: float = 0.02, 
-                 min_peak_rally: float = 0.10, lookback_periods: int = 50):
+                 min_peak_rally: float = 0.10, lookback_periods: int = 50,
+                 # New tunables
+                 min_separation_candles: int = 8,
+                 max_trough_gap_candles: int = 60,
+                 atr_period: int = 14,
+                 atr_prominence_mult: float = 1.0,
+                 atr_tolerance_mult: float = 1.5,
+                 atr_move_mult: float = 1.5):
         """
         Initialize Double Bottom detector.
         
@@ -30,11 +37,23 @@ class DoubleBottomDetector(BasePatternDetector):
             trough_tolerance: Maximum percentage difference between troughs (default 2%)
             min_peak_rally: Minimum rally from trough to peak (default 10%)
             lookback_periods: Number of periods to look back for pattern formation
+            min_separation_candles: Minimum separation between the two troughs
+            max_trough_gap_candles: Maximum allowed candles between two troughs
+            atr_period: ATR period for adaptive thresholds
+            atr_prominence_mult: Min swing prominence in ATR units
+            atr_tolerance_mult: Trough equality tolerance in ATR units
+            atr_move_mult: Required move in ATR units
         """
         super().__init__(min_confidence)
         self.trough_tolerance = trough_tolerance
         self.min_peak_rally = min_peak_rally
         self.lookback_periods = lookback_periods
+        self.min_separation_candles = min_separation_candles
+        self.max_trough_gap_candles = max_trough_gap_candles
+        self.atr_period = atr_period
+        self.atr_prominence_mult = atr_prominence_mult
+        self.atr_tolerance_mult = atr_tolerance_mult
+        self.atr_move_mult = atr_move_mult
     
     def get_pattern_name(self) -> str:
         """Return the pattern name."""
@@ -64,14 +83,17 @@ class DoubleBottomDetector(BasePatternDetector):
         if len(lookback_data) < self.lookback_periods:
             return None
         
-        # Find peaks and valleys in the lookback period
-        peaks, valleys = self._find_peaks_and_valleys(lookback_data)
+        # Compute ATR for adaptive thresholds
+        atr = self._compute_atr(lookback_data, self.atr_period)
+        
+        # Find peaks and valleys in the lookback period (ATR-aware prominence)
+        peaks, valleys = self._find_peaks_and_valleys(lookback_data, atr)
         
         if len(valleys) < 2 or len(peaks) < 1:
             return None
         
         # Check for double bottom pattern
-        pattern_info = self._analyze_double_bottom_pattern(lookback_data, peaks, valleys)
+        pattern_info = self._analyze_double_bottom_pattern(lookback_data, peaks, valleys, atr)
         
         if pattern_info is None:
             return None
@@ -85,123 +107,71 @@ class DoubleBottomDetector(BasePatternDetector):
         
         return confidence if confidence >= self.min_confidence else None
     
-    def _find_peaks_and_valleys(self, data: pd.DataFrame) -> Tuple[List[int], List[int]]:
-        """
-        Find local peaks and valleys in the price data.
+    def _find_peaks_and_valleys(self, data: pd.DataFrame, atr: np.ndarray) -> Tuple[List[int], List[int]]:
+        """Find local peaks and valleys using ATR-aware prominence."""
+        highs = data['high'].values.astype(float)
+        lows = data['low'].values.astype(float)
+        n = len(data)
+        peaks: List[int] = []
+        valleys: List[int] = []
         
-        Args:
-            data: OHLCV DataFrame
-            
-        Returns:
-            Tuple of (peaks_indices, valleys_indices)
-        """
-        highs = data['high'].values
-        lows = data['low'].values
+        min_distance = max(5, n // 20)
         
-        peaks = []
-        valleys = []
-        
-        # Use a simple peak/valley detection with minimum distance
-        min_distance = max(5, len(data) // 20)  # At least 5 periods or 5% of data
-        
-        # Find peaks (local maxima)
-        for i in range(min_distance, len(highs) - min_distance):
-            is_peak = True
-            current_high = highs[i]
-            
-            # Check if current point is higher than surrounding points
-            for j in range(i - min_distance, i + min_distance + 1):
-                if j != i and highs[j] >= current_high:
-                    is_peak = False
-                    break
-            
-            if is_peak:
+        for i in range(min_distance, n - min_distance):
+            h = highs[i]
+            local_max = max(highs[i - min_distance:i].max(initial=h), highs[i+1:i+1+min_distance].max(initial=h))
+            if h >= highs[i - min_distance:i + min_distance + 1].max() and (h - local_max) >= self.atr_prominence_mult * atr[i]:
                 peaks.append(i)
         
-        # Find valleys (local minima)
-        for i in range(min_distance, len(lows) - min_distance):
-            is_valley = True
-            current_low = lows[i]
-            
-            # Check if current point is lower than surrounding points
-            for j in range(i - min_distance, i + min_distance + 1):
-                if j != i and lows[j] <= current_low:
-                    is_valley = False
-                    break
-            
-            if is_valley:
+        for i in range(min_distance, n - min_distance):
+            l = lows[i]
+            local_min = min(lows[i - min_distance:i].min(initial=l), lows[i+1:i+1+min_distance].min(initial=l))
+            if l <= lows[i - min_distance:i + min_distance + 1].min() and (local_min - l) >= self.atr_prominence_mult * atr[i]:
                 valleys.append(i)
         
         return peaks, valleys
     
     def _analyze_double_bottom_pattern(self, data: pd.DataFrame, peaks: List[int], 
-                                     valleys: List[int]) -> Optional[Tuple[int, int, int, float]]:
+                                     valleys: List[int], atr: np.ndarray) -> Optional[Tuple[int, int, int, float]]:
         """
-        Analyze if the peaks and valleys form a valid double bottom pattern.
-        
-        Args:
-            data: OHLCV DataFrame
-            peaks: List of peak indices
-            valleys: List of valley indices
-            
-        Returns:
-            Tuple of (trough1_idx, trough2_idx, peak_idx, confirmation_level) or None
+        Analyze peaks/valleys for double bottom with adaptive tolerances.
         """
-        highs = data['high'].values
-        lows = data['low'].values
-        closes = data['close'].values
+        highs = data['high'].values.astype(float)
+        lows = data['low'].values.astype(float)
+        closes = data['close'].values.astype(float)
         
-        # Look for the two lowest troughs
-        valley_depths = [(idx, lows[idx]) for idx in valleys]
-        valley_depths.sort(key=lambda x: x[1])  # Sort by depth (ascending)
-        
-        if len(valley_depths) < 2:
-            return None
-        
-        # Try different combinations of the lowest valleys
-        for i in range(len(valley_depths) - 1):
-            for j in range(i + 1, min(i + 3, len(valley_depths))):  # Check top 3 combinations
-                trough1_idx, trough1_depth = valley_depths[i]
-                trough2_idx, trough2_depth = valley_depths[j]
-                
-                # Ensure proper chronological order
-                if trough1_idx > trough2_idx:
-                    trough1_idx, trough2_idx = trough2_idx, trough1_idx
-                    trough1_depth, trough2_depth = trough2_depth, trough1_depth
-                
-                # Check if troughs are at similar levels (within tolerance)
-                depth_diff = abs(trough1_depth - trough2_depth) / max(trough1_depth, trough2_depth)
-                if depth_diff > self.trough_tolerance:
+        for i in range(len(valleys) - 1):
+            for j in range(i + 1, len(valleys)):
+                t1, t2 = valleys[i], valleys[j]
+                gap = t2 - t1
+                if gap < self.min_separation_candles or gap > self.max_trough_gap_candles:
                     continue
-                
-                # Find peak between the troughs
-                peaks_between = [p for p in peaks if trough1_idx < p < trough2_idx]
-                if not peaks_between:
+                trough1_depth, trough2_depth = lows[t1], lows[t2]
+                trough_avg = (trough1_depth + trough2_depth) / 2.0
+                # Equality tolerance by % or ATR
+                if abs(trough1_depth - trough2_depth) > max(self.trough_tolerance * trough_avg, self.atr_tolerance_mult * atr[t2]):
                     continue
-                
-                # Take the highest peak between troughs
-                peak_idx = max(peaks_between, key=lambda p: highs[p])
-                peak_high = highs[peak_idx]
-                
-                # Check minimum rally requirement
-                trough_avg = (trough1_depth + trough2_depth) / 2
-                rally_ratio = (peak_high - trough_avg) / trough_avg
-                
-                if rally_ratio < self.min_peak_rally:
+                # Peaks between
+                mids = [p for p in peaks if t1 < p < t2]
+                if not mids:
                     continue
-                
-                # Check for pattern confirmation (price breaking above peak)
+                p = max(mids, key=lambda idx: highs[idx])
+                peak_high = highs[p]
+                # Sufficient rally by % or ATR
+                rally_ok = ((peak_high - trough_avg) / max(trough_avg, 1e-9) >= self.min_peak_rally) or ((peak_high - trough_avg) >= self.atr_move_mult * atr[p])
+                if not rally_ok:
+                    continue
+                # Confirmation: close above peak after t2
                 confirmation_level = 0.0
-                if len(data) > trough2_idx + 1:
-                    post_trough2_highs = highs[trough2_idx + 1:]
-                    if len(post_trough2_highs) > 0 and np.max(post_trough2_highs) > peak_high:
-                        confirmation_level = 1.0
-                    elif closes[-1] > peak_high:
-                        confirmation_level = 0.8
-                    elif closes[-1] > trough_avg * 1.05:  # Close to breaking resistance
-                        confirmation_level = 0.6
+                post = closes[t2+1:] if (t2 + 1) < len(closes) else np.array([closes[-1]])
+                if post.size > 0 and np.max(post) > peak_high:
+                    confirmation_level = 1.0
+                elif closes[-1] > peak_high:
+                    confirmation_level = 0.8
+                elif closes[-1] > trough_avg * (1 + 0.05):
+                    confirmation_level = 0.6
                 
-                return trough1_idx, trough2_idx, peak_idx, confirmation_level
+                return t1, t2, p, confirmation_level
         
         return None
     
@@ -335,3 +305,32 @@ class DoubleBottomDetector(BasePatternDetector):
                 
         except:
             return 0.5
+    
+    def _compute_atr(self, data: pd.DataFrame, period: int) -> np.ndarray:
+        """Compute Wilder's ATR for adaptive thresholds."""
+        high = data['high'].values.astype(float)
+        low = data['low'].values.astype(float)
+        close = data['close'].values.astype(float)
+        prev_close = np.roll(close, 1)
+        prev_close[0] = close[0]
+        tr = np.maximum.reduce([
+            high - low,
+            np.abs(high - prev_close),
+            np.abs(low - prev_close)
+        ])
+        atr = np.empty_like(tr)
+        atr[:] = np.nan
+        if len(tr) == 0:
+            return np.zeros(0)
+        # Wilder smoothing
+        start = min(period - 1, len(tr) - 1)
+        atr[start] = np.nanmean(tr[:start+1])
+        for i in range(start + 1, len(tr)):
+            atr[i] = (atr[i-1] * (period - 1) + tr[i]) / period
+        # Fill initial values
+        first_valid = np.where(~np.isnan(atr))[0]
+        if first_valid.size:
+            atr[:first_valid[0]] = atr[first_valid[0]]
+        else:
+            atr[:] = np.nanmean(tr) if len(tr) else 0.0
+        return atr

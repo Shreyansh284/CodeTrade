@@ -28,7 +28,7 @@ st.set_page_config(
     menu_items={
         'Get Help': None,
         'Report a bug': None,
-        'About': "# Stock Pattern Detector (Monochrome)\nClean black & white UI"
+        'About': "# Stock Pattern Detector\nOptimized for professional pattern analysis"
     }
 )
 
@@ -46,109 +46,131 @@ try:
     from patterns.base import PatternResult
     from visualization.charts import ChartRenderer
     from utils.logging_config import get_logger
-    
-    # Initialize logger
-    logger = get_logger(__name__)
 except ImportError as e:
     st.error(f"❌ Import error: {e}")
     st.stop()
 
+# Initialize logger
+logger = get_logger(__name__)
+
 # Custom CSS for modern, responsive UI
 st.markdown("""
 <style>
-    :root {
-        --bg: #ffffff;
-        --fg: #111111;
-        --muted: #666666;
-        --border: #e5e5e5;
-        --accent: #000000;
+    /* Global styles */
+    .main > div {
+        padding-top: 1rem;
     }
-    .main > div { padding-top: 0.75rem; }
+    
+    /* Header styling */
     .app-header {
-        background: var(--bg);
-        padding: 1rem 0;
-        border-bottom: 1px solid var(--border);
-        color: var(--fg);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        color: white;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
-    .app-header h1 { margin: 0; font-size: 2rem; font-weight: 700; }
-    .app-header p { margin: 0.25rem 0 0 0; font-size: 0.95rem; color: var(--muted); }
-    .metric-card, .info-card {
-        background: var(--bg);
+    
+    .app-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    .app-header p {
+        margin: 0.5rem 0 0 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    /* Sidebar styling */
+    .sidebar .sidebar-content {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    /* Cards and containers */
+    .metric-card {
+        background: #ffffff;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin: 1rem 0;
+    }
+    
+    .pattern-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .info-card {
+        background: #f8f9fa;
         padding: 1rem;
         border-radius: 8px;
-        border: 1px solid var(--border);
-        margin: 0.5rem 0;
+        border-left: 4px solid #007bff;
+        margin: 1rem 0;
     }
+    
+    /* Buttons */
     .stButton > button {
-        background: var(--fg);
-        color: var(--bg);
-        border: 1px solid var(--fg);
-        border-radius: 6px;
-        padding: 0.6rem 1rem;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
         font-weight: 600;
+        transition: all 0.3s ease;
         width: 100%;
     }
+    
     .stButton > button:hover {
-        filter: brightness(0.95);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
-    .stSelectbox > label, .stMultiSelect > label, .stSlider > label { font-weight: 600; color: var(--fg); }
-    .css-1d391kg, .css-1e5imcs { color: var(--fg); }
-    .stSlider > div > div > div[role="slider"] { background: var(--fg); }
-    .stSlider [data-baseweb="slider"] div { background: var(--border); }
-    .stAlert { border: 1px solid var(--border); }
-    .stProgress > div > div { background: var(--fg) !important; }
-    .stPlotlyChart { border: 1px solid var(--border); border-radius: 8px; }
-    .sidebar .sidebar-content { background: var(--bg); }
-    @media (max-width: 768px) { .app-header h1 { font-size: 1.6rem; } }
+    
+    /* Form elements */
+    .stSelectbox > label, .stMultiSelect > label, .stSlider > label {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    /* Loading indicator */
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .app-header h1 {
+            font-size: 2rem;
+        }
+        .app-header p {
+            font-size: 1rem;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Pattern detector configuration
-def _map_sensitivity(level: int) -> Dict[str, Any]:
-    """Map UI sensitivity level (1-5) to detector parameters."""
-    level = max(1, min(5, int(level)))
-    # Lower prominence/decline thresholds with higher sensitivity
+@st.cache_resource
+def get_pattern_detectors():
+    """Initialize and cache pattern detectors for optimal performance."""
     return {
-        'dt_peak_tol': 0.015 if level >= 4 else (0.02 if level >= 3 else 0.025),
-        'dt_min_decline': 0.06 if level >= 5 else (0.08 if level >= 4 else 0.10),
-        'db_trough_tol': 0.015 if level >= 4 else (0.02 if level >= 3 else 0.025),
-        'db_min_rally': 0.06 if level >= 5 else (0.08 if level >= 4 else 0.10),
-        'atr_prom_mult': 0.8 if level >= 4 else (1.0 if level >= 3 else 1.2),
-        'atr_tol_mult': 1.8 if level >= 4 else 1.5,
-        'hs_head_prom': 0.06 if level >= 4 else 0.08,
-        'hs_shoulder_tol': 0.05 if level >= 4 else 0.04
+        'Head & Shoulders': ImprovedHeadAndShouldersDetector(),
+        'Inverse Head & Shoulders': InverseHeadAndShouldersDetector(),
+        'Double Top': DoubleTopDetector(),
+        'Double Bottom': DoubleBottomDetector()
     }
 
-def build_detectors(sensitivity: int, min_confidence: float) -> Dict[str, Any]:
-    p = _map_sensitivity(sensitivity)
-    return {
-        'Head & Shoulders': ImprovedHeadAndShouldersDetector(
-            min_confidence=min_confidence,
-            shoulder_tolerance=p['hs_shoulder_tol'],
-            head_prominence=p['hs_head_prom'],
-            atr_prominence_mult=p['atr_prom_mult'],
-            atr_tolerance_mult=p['atr_tol_mult']
-        ),
-        'Inverse Head & Shoulders': InverseHeadAndShouldersDetector(
-            min_confidence=min_confidence
-        ),
-        'Double Top': DoubleTopDetector(
-            min_confidence=min_confidence,
-            peak_tolerance=p['dt_peak_tol'],
-            min_valley_decline=p['dt_min_decline'],
-            atr_prominence_mult=p['atr_prom_mult'],
-            atr_tolerance_mult=p['atr_tol_mult']
-        ),
-        'Double Bottom': DoubleBottomDetector(
-            min_confidence=min_confidence,
-            trough_tolerance=p['db_trough_tol'],
-            min_peak_rally=p['db_min_rally'],
-            atr_prominence_mult=p['atr_prom_mult'],
-            atr_tolerance_mult=p['atr_tol_mult']
-        )
-    }
+PATTERN_DETECTORS = get_pattern_detectors()
 
 @st.cache_resource
 def initialize_components():
@@ -164,10 +186,7 @@ def load_instrument_data(instrument: str, start_date: date, end_date: date) -> O
     """Load and cache instrument data with automatic cache invalidation."""
     try:
         components = initialize_components()
-        # Convert dates to datetime for the loader
-        start_dt = datetime.combine(start_date, datetime.min.time())
-        end_dt = datetime.combine(end_date, datetime.min.time())
-        return components['data_loader'].load_instrument_data(instrument, start_dt, end_dt)
+        return components['data_loader'].load_data(instrument, start_date, end_date)
     except Exception as e:
         logger.error(f"Error loading data for {instrument}: {e}")
         return None
@@ -183,8 +202,7 @@ def get_available_instruments() -> List[str]:
         return []
 
 def detect_patterns_parallel(data: pd.DataFrame, selected_patterns: List[str], 
-                           confidence_threshold: float,
-                           detectors: Dict[str, Any]) -> List[PatternResult]:
+                           confidence_threshold: float) -> List[PatternResult]:
     """Detect patterns using parallel processing for better performance."""
     results = []
     
@@ -193,8 +211,8 @@ def detect_patterns_parallel(data: pd.DataFrame, selected_patterns: List[str],
         future_to_pattern = {}
         
         for pattern_name in selected_patterns:
-            if pattern_name in detectors:
-                detector = detectors[pattern_name]
+            if pattern_name in PATTERN_DETECTORS:
+                detector = PATTERN_DETECTORS[pattern_name]
                 future = executor.submit(detector.detect, data)
                 future_to_pattern[future] = pattern_name
         
@@ -228,8 +246,9 @@ def render_app_header():
 def create_sidebar_config() -> Optional[Dict[str, Any]]:
     """Create optimized sidebar configuration with enhanced UX."""
     st.sidebar.markdown("""
-    <div style="padding: 0.5rem 0; margin-bottom: 0.5rem; border-bottom: 1px solid #e5e5e5;">
-        <h3 style="color: #111; margin: 0; text-align: left;">⚙️ Analysis Configuration</h3>
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+        <h3 style="color: white; margin: 0; text-align: center;">⚙️ Analysis Configuration</h3>
     </div>
     """, unsafe_allow_html=True)
 
@@ -281,23 +300,8 @@ def create_sidebar_config() -> Optional[Dict[str, Any]]:
     # Get date ranges for validation
     sample_data = load_instrument_data(primary_instrument, date.today() - timedelta(days=365*5), date.today())
     if sample_data is not None and not sample_data.empty:
-        if 'datetime' in sample_data.columns:
-            available_start = sample_data['datetime'].min().date()
-            available_end = sample_data['datetime'].max().date()
-        else:
-            # Fallback: try to infer from a date-like column
-            date_col = 'Date' if 'Date' in sample_data.columns else ('date' if 'date' in sample_data.columns else None)
-            if date_col is not None:
-                s = pd.to_datetime(sample_data[date_col], errors='coerce')
-                if s.notna().any():
-                    available_start = s.min().date()
-                    available_end = s.max().date()
-                else:
-                    available_start = date.today() - timedelta(days=365*2)
-                    available_end = date.today()
-            else:
-                available_start = date.today() - timedelta(days=365*2)
-                available_end = date.today()
+        available_start = sample_data.index.min().date()
+        available_end = sample_data.index.max().date()
     else:
         available_start = date.today() - timedelta(days=365*2)
         available_end = date.today()
@@ -330,11 +334,10 @@ def create_sidebar_config() -> Optional[Dict[str, Any]]:
 
     # Pattern selection
     st.sidebar.markdown("### 🔍 Pattern Detection")
-    all_patterns = ['Head & Shoulders', 'Inverse Head & Shoulders', 'Double Top', 'Double Bottom']
     selected_patterns = st.sidebar.multiselect(
         "Patterns to detect:",
-        options=all_patterns,
-        default=all_patterns,
+        options=list(PATTERN_DETECTORS.keys()),
+        default=list(PATTERN_DETECTORS.keys()),
         help="Select which patterns to analyze"
     )
 
@@ -344,14 +347,9 @@ def create_sidebar_config() -> Optional[Dict[str, Any]]:
             "Minimum confidence level:",
             min_value=0.0,
             max_value=1.0,
-            value=0.5,
+            value=0.6,
             step=0.05,
             help="Filter patterns below this confidence level"
-        )
-        sensitivity = st.slider(
-            "Detection sensitivity:",
-            min_value=1, max_value=5, value=3, step=1,
-            help="Higher = more patterns (looser thresholds)."
         )
         
         show_volume = st.checkbox(
@@ -387,7 +385,6 @@ def create_sidebar_config() -> Optional[Dict[str, Any]]:
         'end_date': end_date,
         'selected_patterns': selected_patterns,
         'confidence_threshold': confidence_threshold,
-        'sensitivity': sensitivity,
         'show_volume': show_volume,
         'chart_height': chart_height
     }
@@ -420,12 +417,10 @@ def display_analysis_results(config: Dict[str, Any]):
         status_text.text("🔍 Detecting patterns...")
         
         # Detect patterns
-        detectors = build_detectors(config['sensitivity'], config['confidence_threshold'])
         pattern_results = detect_patterns_parallel(
             primary_data,
             config['selected_patterns'],
-            config['confidence_threshold'],
-            detectors
+            config['confidence_threshold']
         )
         
         progress_bar.progress(0.7)
