@@ -82,6 +82,21 @@ class ChartRenderer:
             if data is None or data.empty:
                 return self._create_empty_chart(title, height)
             
+            # Ensure datetime column exists for x-axis
+            if 'datetime' in data.columns:
+                try:
+                    data = data.copy()
+                    data['datetime'] = pd.to_datetime(data['datetime'])
+                except Exception:
+                    pass
+            
+            # Sort by datetime if present
+            if 'datetime' in data.columns:
+                try:
+                    data = data.sort_values('datetime')
+                except Exception:
+                    pass
+            
             # Limit data for better performance and readability
             original_len = len(data)
             if len(data) > max_candles:
@@ -91,76 +106,76 @@ class ChartRenderer:
                     offset = original_len - len(data)
                     adjusted_patterns = []
                     for p in patterns:
-                        if hasattr(p, 'candle_index') and p.candle_index >= offset:
-                            # Create new pattern with adjusted index
-                            adjusted_pattern = PatternResult(
+                        if hasattr(p, 'candle_index') and p.candle_index is not None and p.candle_index >= offset:
+                            adjusted_patterns.append(PatternResult(
                                 pattern_type=p.pattern_type,
                                 confidence=p.confidence,
                                 datetime=p.datetime,
                                 timeframe=p.timeframe,
                                 candle_index=p.candle_index - offset
-                            )
-                            adjusted_patterns.append(adjusted_pattern)
+                            ))
                     patterns = adjusted_patterns
             
             # Create figure
             fig = go.Figure()
             
             x_vals = self._get_x_values(data)
+            # Convert to datetime for safety
+            try:
+                if hasattr(x_vals, 'dtype') and not isinstance(x_vals, pd.DatetimeIndex):
+                    x_vals = pd.to_datetime(x_vals)
+            except Exception:
+                pass
             
             # Add candlestick trace with better visibility
-            fig.add_trace(go.Candlestick(
+            fig.add_trace(go. Candlestick(
                 x=x_vals,
                 open=data['open'],
                 high=data['high'],
                 low=data['low'],
                 close=data['close'],
                 name="Price",
-                increasing_line_color='#2E7D32',    # Darker green for better visibility
-                decreasing_line_color='#C62828',    # Darker red for better visibility
-                increasing_fillcolor='rgba(76, 175, 80, 0.7)',   # Material green
-                decreasing_fillcolor='rgba(244, 67, 54, 0.7)',   # Material red
-                line=dict(width=1.5)  # Slightly thicker lines
+                increasing_line_color='#2E7D32',
+                decreasing_line_color='#C62828',
+                increasing_fillcolor='rgba(76, 175, 80, 0.7)',
+                decreasing_fillcolor='rgba(244, 67, 54, 0.7)',
+                line=dict(width=1.5)
             ))
             
             # Add pattern markers
             if patterns:
                 self._add_simple_pattern_markers(fig, patterns, data)
             
-            # Clean layout with better grid visibility
+            # Compute x-range to avoid squeezing
+            try:
+                x_min = x_vals.min() if hasattr(x_vals, 'min') else x_vals[0]
+                x_max = x_vals.max() if hasattr(x_vals, 'max') else x_vals[-1]
+            except Exception:
+                x_min, x_max = None, None
+            
+            # Clean layout with better grid visibility and fixed date axis
             fig.update_layout(
-                title=dict(
-                    text=title,
-                    x=0.5,
-                    font=dict(size=16, color='#2E2E2E')
-                ),
+                title=dict(text=title, x=0.5, font=dict(size=16, color='#2E2E2E')),
                 height=height,
                 margin=dict(l=60, r=60, t=80, b=60),
-                plot_bgcolor='#FAFAFA',  # Light gray background for better contrast
+                plot_bgcolor='#FAFAFA',
                 paper_bgcolor='white',
                 font=dict(family="Arial, sans-serif", size=12, color='#2E2E2E'),
                 showlegend=False,
-                xaxis=dict(
-                    showgrid=True,
-                    gridwidth=1,
-                    gridcolor='rgba(128, 128, 128, 0.3)',  # More visible grid
-                    showline=True,
-                    linewidth=1,
-                    linecolor='rgba(128, 128, 128, 0.5)',
-                    rangeslider=dict(visible=False),
-                    tickfont=dict(size=10)
-                ),
-                yaxis=dict(
-                    title="Price",
-                    showgrid=True,
-                    gridwidth=1,
-                    gridcolor='rgba(128, 128, 128, 0.3)',  # More visible grid
-                    showline=True,
-                    linewidth=1,
-                    linecolor='rgba(128, 128, 128, 0.5)',
-                    tickfont=dict(size=10)
-                ),
                 hovermode='x unified'
+            )
+            fig.update_xaxes(
+                type='date',
+                showgrid=True, gridwidth=1, gridcolor='rgba(128, 128, 128, 0.3)',
+                showline=True, linewidth=1, linecolor='rgba(128, 128, 128, 0.5)',
+                rangeslider=dict(visible=False)
+            )
+            if x_min is not None and x_max is not None:
+                fig.update_xaxes(range=[x_min, x_max])
+            fig.update_yaxes(
+                title="Price",
+                showgrid=True, gridwidth=1, gridcolor='rgba(128, 128, 128, 0.3)',
+                showline=True, linewidth=1, linecolor='rgba(128, 128, 128, 0.5)'
             )
             
             return fig

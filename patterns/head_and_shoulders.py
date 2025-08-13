@@ -22,20 +22,39 @@ class HeadAndShouldersDetector(BasePatternDetector):
     """
     
     def __init__(self, min_confidence: float = 0.5, shoulder_tolerance: float = 0.05, 
-                 head_prominence: float = 0.10, lookback_periods: int = 100):
+                 head_prominence: float = 0.10, lookback_periods: int = 100,
+                 # New tunables
+                 min_separation_candles: int = 8,
+                 max_triplet_span: int = 120,
+                 atr_period: int = 14,
+                 atr_prominence_mult: float = 1.0,
+                 atr_tolerance_mult: float = 1.5,
+                 neckline_slope_tol: float = 0.15):
         """
         Initialize Head and Shoulders detector.
         
         Args:
             min_confidence: Minimum confidence threshold
-            shoulder_tolerance: Maximum percentage difference between shoulders (default 5%)
-            head_prominence: Minimum height difference of head vs shoulders (default 10%)
+            shoulder_tolerance: Max percentage difference between shoulders (default 5%)
+            head_prominence: Min height difference of head vs shoulders (default 10%)
             lookback_periods: Number of periods to look back for pattern formation
+            min_separation_candles: Minimum separation between peaks in triplet
+            max_triplet_span: Maximum span from left shoulder to right shoulder
+            atr_period: ATR period for adaptive thresholds
+            atr_prominence_mult: Min swing prominence in ATR units
+            atr_tolerance_mult: Shoulder/valley equality tolerance in ATR units
+            neckline_slope_tol: Max relative slope allowed for neckline
         """
         super().__init__(min_confidence)
         self.shoulder_tolerance = shoulder_tolerance
         self.head_prominence = head_prominence
         self.lookback_periods = lookback_periods
+        self.min_separation_candles = min_separation_candles
+        self.max_triplet_span = max_triplet_span
+        self.atr_period = atr_period
+        self.atr_prominence_mult = atr_prominence_mult
+        self.atr_tolerance_mult = atr_tolerance_mult
+        self.neckline_slope_tol = neckline_slope_tol
     
     def get_pattern_name(self) -> str:
         """Return the pattern name."""
@@ -48,170 +67,100 @@ class HeadAndShouldersDetector(BasePatternDetector):
     def _detect_pattern_at_index(self, data: pd.DataFrame, index: int) -> Optional[float]:
         """
         Detect Head and Shoulders pattern at specific index.
-        
-        Args:
-            data: OHLCV DataFrame
-            index: Index position to check
-            
-        Returns:
-            Confidence score if pattern detected, None otherwise
         """
         if index >= len(data) or index < self.lookback_periods:
             return None
         
-        # Look back from current index
         lookback_data = data.iloc[max(0, index - self.lookback_periods):index + 1]
-        
         if len(lookback_data) < self.lookback_periods:
             return None
         
-        # Find peaks and valleys in the lookback period
-        peaks, valleys = self._find_peaks_and_valleys(lookback_data)
-        
+        atr = self._compute_atr(lookback_data, self.atr_period)
+        peaks, valleys = self._find_peaks_and_valleys(lookback_data, atr)
         if len(peaks) < 3 or len(valleys) < 2:
             return None
         
-        # Check for head and shoulders pattern
-        pattern_info = self._analyze_head_shoulders_pattern(lookback_data, peaks, valleys)
-        
+        pattern_info = self._analyze_head_shoulders_pattern(lookback_data, peaks, valleys, atr)
         if pattern_info is None:
             return None
         
-        left_shoulder_idx, head_idx, right_shoulder_idx, left_valley_idx, right_valley_idx, confirmation_level = pattern_info
-        
-        # Calculate confidence based on pattern quality
+        ls, hd, rs, lv, rv, confirmation_level = pattern_info
         confidence = self._calculate_head_shoulders_confidence(
-            lookback_data, left_shoulder_idx, head_idx, right_shoulder_idx, 
-            left_valley_idx, right_valley_idx, confirmation_level
+            lookback_data, ls, hd, rs, lv, rv, confirmation_level
         )
-        
         return confidence if confidence >= self.min_confidence else None
     
-    def _find_peaks_and_valleys(self, data: pd.DataFrame) -> Tuple[List[int], List[int]]:
-        """
-        Find local peaks and valleys in the price data.
+    def _find_peaks_and_valleys(self, data: pd.DataFrame, atr: np.ndarray) -> Tuple[List[int], List[int]]:
+        """Find peaks/valleys using ATR-aware prominence to reduce noise."""
+        highs = data['high'].values.astype(float)
+        lows = data['low'].values.astype(float)
+        n = len(data)
+        min_distance = max(5, n // 20)
+        peaks: List[int] = []
+        valleys: List[int] = []
         
-        Args:
-            data: OHLCV DataFrame
-            
-        Returns:
-            Tuple of (peaks_indices, valleys_indices)
-        """
-        highs = data['high'].values
-        lows = data['low'].values
-        
-        peaks = []
-        valleys = []
-        
-        # Use a minimum distance to avoid noise
-        min_distance = max(5, len(data) // 20)  # At least 5 periods or 5% of data
-        
-        # Find peaks (local maxima)
-        for i in range(min_distance, len(highs) - min_distance):
-            is_peak = True
-            current_high = highs[i]
-            
-            # Check if current point is higher than surrounding points
-            for j in range(i - min_distance, i + min_distance + 1):
-                if j != i and highs[j] >= current_high:
-                    is_peak = False
-                    break
-            
-            if is_peak:
+        for i in range(min_distance, n - min_distance):
+            h = highs[i]
+            local_max = max(highs[i - min_distance:i].max(initial=h), highs[i+1:i+1+min_distance].max(initial=h))
+            if h >= highs[i - min_distance:i + min_distance + 1].max() and (h - local_max) >= self.atr_prominence_mult * atr[i]:
                 peaks.append(i)
         
-        # Find valleys (local minima)
-        for i in range(min_distance, len(lows) - min_distance):
-            is_valley = True
-            current_low = lows[i]
-            
-            # Check if current point is lower than surrounding points
-            for j in range(i - min_distance, i + min_distance + 1):
-                if j != i and lows[j] <= current_low:
-                    is_valley = False
-                    break
-            
-            if is_valley:
+        for i in range(min_distance, n - min_distance):
+            l = lows[i]
+            local_min = min(lows[i - min_distance:i].min(initial=l), lows[i+1:i+1+min_distance].min(initial=l))
+            if l <= lows[i - min_distance:i + min_distance + 1].min() and (local_min - l) >= self.atr_prominence_mult * atr[i]:
                 valleys.append(i)
         
         return peaks, valleys
     
     def _analyze_head_shoulders_pattern(self, data: pd.DataFrame, peaks: List[int], 
-                                       valleys: List[int]) -> Optional[Tuple[int, int, int, int, int, float]]:
-        """
-        Analyze if the peaks and valleys form a valid head and shoulders pattern.
+                                       valleys: List[int], atr: np.ndarray) -> Optional[Tuple[int, int, int, int, int, float]]:
+        """Analyze if peaks/valleys form H&S using ATR-aware tolerances and slope checks."""
+        highs = data['high'].values.astype(float)
+        lows = data['low'].values.astype(float)
+        closes = data['close'].values.astype(float)
         
-        Args:
-            data: OHLCV DataFrame
-            peaks: List of peak indices
-            valleys: List of valley indices
-            
-        Returns:
-            Tuple of (left_shoulder_idx, head_idx, right_shoulder_idx, left_valley_idx, right_valley_idx, confirmation_level) or None
-        """
-        highs = data['high'].values
-        lows = data['low'].values
-        closes = data['close'].values
-        
-        # Need at least 3 peaks for head and shoulders
-        if len(peaks) < 3:
-            return None
-        
-        # Try different combinations of 3 consecutive peaks
         for i in range(len(peaks) - 2):
-            left_shoulder_idx = peaks[i]
-            head_idx = peaks[i + 1]
-            right_shoulder_idx = peaks[i + 2]
-            
-            left_shoulder_height = highs[left_shoulder_idx]
-            head_height = highs[head_idx]
-            right_shoulder_height = highs[right_shoulder_idx]
-            
-            # Check if head is higher than both shoulders
-            if head_height <= left_shoulder_height or head_height <= right_shoulder_height:
+            ls, hd, rs = peaks[i], peaks[i+1], peaks[i+2]
+            if (hd - ls) < self.min_separation_candles or (rs - hd) < self.min_separation_candles:
                 continue
-            
-            # Check head prominence
-            shoulder_avg = (left_shoulder_height + right_shoulder_height) / 2
-            head_prominence_ratio = (head_height - shoulder_avg) / shoulder_avg
-            
-            if head_prominence_ratio < self.head_prominence:
+            if (rs - ls) > self.max_triplet_span:
                 continue
-            
-            # Check shoulder similarity
-            shoulder_diff = abs(left_shoulder_height - right_shoulder_height) / max(left_shoulder_height, right_shoulder_height)
-            if shoulder_diff > self.shoulder_tolerance:
+            ls_h, hd_h, rs_h = highs[ls], highs[hd], highs[rs]
+            if not (hd_h > ls_h and hd_h > rs_h):
                 continue
-            
-            # Find valleys between peaks
-            left_valley_candidates = [v for v in valleys if left_shoulder_idx < v < head_idx]
-            right_valley_candidates = [v for v in valleys if head_idx < v < right_shoulder_idx]
-            
-            if not left_valley_candidates or not right_valley_candidates:
+            # Shoulder similarity with ATR tolerance
+            shoulder_avg = (ls_h + rs_h) / 2.0
+            if abs(ls_h - rs_h) > max(self.shoulder_tolerance * shoulder_avg, self.atr_tolerance_mult * atr[rs]):
                 continue
-            
-            # Take the lowest valley between each pair of peaks
-            left_valley_idx = min(left_valley_candidates, key=lambda v: lows[v])
-            right_valley_idx = min(right_valley_candidates, key=lambda v: lows[v])
-            
-            # Calculate neckline level (average of the two valley lows)
-            neckline_level = (lows[left_valley_idx] + lows[right_valley_idx]) / 2
-            
-            # Check for pattern confirmation (price breaking below neckline)
+            # Head prominence
+            head_prom = (hd_h - shoulder_avg) / max(shoulder_avg, 1e-9)
+            if head_prom < self.head_prominence:
+                continue
+            # Valleys between
+            left_vs = [v for v in valleys if ls < v < hd]
+            right_vs = [v for v in valleys if hd < v < rs]
+            if not left_vs or not right_vs:
+                continue
+            lv = min(left_vs, key=lambda idx: lows[idx])
+            rv = min(right_vs, key=lambda idx: lows[idx])
+            lv_low, rv_low = lows[lv], lows[rv]
+            neckline = (lv_low + rv_low) / 2.0
+            # Neckline slope tolerance (relative)
+            slope_rel = abs(rv_low - lv_low) / max(neckline, 1e-9)
+            if slope_rel > self.neckline_slope_tol:
+                continue
+            # Confirmation on closes
+            post = closes[rs+1:] if (rs + 1) < len(closes) else np.array([closes[-1]])
             confirmation_level = 0.0
-            if len(data) > right_shoulder_idx + 1:
-                post_pattern_lows = lows[right_shoulder_idx + 1:]
-                post_pattern_closes = closes[right_shoulder_idx + 1:]
-                
-                if len(post_pattern_lows) > 0:
-                    if np.min(post_pattern_lows) < neckline_level:
-                        confirmation_level = 1.0
-                    elif len(post_pattern_closes) > 0 and closes[-1] < neckline_level:
-                        confirmation_level = 0.8
-                    elif len(post_pattern_closes) > 0 and closes[-1] < neckline_level * 1.02:  # Close to breaking
-                        confirmation_level = 0.6
+            if post.size > 0 and np.min(post) < neckline:
+                confirmation_level = 1.0
+            elif closes[-1] < neckline:
+                confirmation_level = 0.8
+            elif closes[-1] < neckline * 1.02:
+                confirmation_level = 0.6
             
-            return left_shoulder_idx, head_idx, right_shoulder_idx, left_valley_idx, right_valley_idx, confirmation_level
+            return ls, hd, rs, lv, rv, confirmation_level
         
         return None
     
@@ -369,3 +318,32 @@ class HeadAndShouldersDetector(BasePatternDetector):
                 
         except:
             return 0.5
+    
+    def _compute_atr(self, data: pd.DataFrame, period: int) -> np.ndarray:
+        """Compute Wilder's ATR for adaptive thresholds."""
+        high = data['high'].values.astype(float)
+        low = data['low'].values.astype(float)
+        close = data['close'].values.astype(float)
+        prev_close = np.roll(close, 1)
+        prev_close[0] = close[0]
+        tr = np.maximum.reduce([
+            high - low,
+            np.abs(high - prev_close),
+            np.abs(low - prev_close)
+        ])
+        atr = np.empty_like(tr)
+        atr[:] = np.nan
+        if len(tr) == 0:
+            return np.zeros(0)
+        # Wilder smoothing
+        start = min(period - 1, len(tr) - 1)
+        atr[start] = np.nanmean(tr[:start+1])
+        for i in range(start + 1, len(tr)):
+            atr[i] = (atr[i-1] * (period - 1) + tr[i]) / period
+        # Fill initial values
+        first_valid = np.where(~np.isnan(atr))[0]
+        if first_valid.size:
+            atr[:first_valid[0]] = atr[first_valid[0]]
+        else:
+            atr[:] = np.nanmean(tr) if len(tr) else 0.0
+        return atr

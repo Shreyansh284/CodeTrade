@@ -103,7 +103,7 @@ def create_sidebar():
     """Create clean sidebar configuration"""
     st.sidebar.header("📊 Configuration")
     
-    # Get available instruments with optional filter
+    # Get available instruments
     try:
         instruments_all = st.session_state.data_loader.get_available_instruments()
         if not instruments_all:
@@ -113,193 +113,79 @@ def create_sidebar():
         st.sidebar.error(f"Error loading instruments: {e}")
         return None
 
-    search_term = st.sidebar.text_input("🔎 Filter Stocks", "", help="Type part of symbol to filter list")
-    if search_term:
-        instruments = [s for s in instruments_all if search_term.lower() in s.lower()]
-        if not instruments:
-            st.sidebar.warning("No matches for filter")
-            instruments = instruments_all
-    else:
-        instruments = instruments_all
+    # Simple instrument picker (no clutter)
+    instrument = st.sidebar.selectbox("📈 Select Stock", instruments_all)
+    selected_instruments = [instrument]
 
-    loader = st.session_state.data_loader
-    multi_mode = getattr(loader, 'flat_mode', False)
-    if multi_mode:
-        selected_instruments = st.sidebar.multiselect(
-            "📈 Select Stock(s)",
-            instruments,
-            default=instruments[:1],
-            help="Choose one or more stocks to analyze"
-        )
-    else:
-        selected_instruments = [st.sidebar.selectbox(
-            "📈 Select Stock",
-            instruments,
-            help="Choose the stock to analyze"
-        )]
-    
-    # Date range selection
-    st.sidebar.subheader("📅 Date Range")
-    
-    # Get available dates for primary selected instrument
-    available_dates = []
-    primary_instrument = selected_instruments[0] if selected_instruments else None
-    if not primary_instrument:
-        st.sidebar.warning("Select at least one instrument")
-        return None
+    # Get available dates to drive timeframe slider
     try:
-        available_dates = st.session_state.data_loader.get_available_dates(primary_instrument)
+        available_dates = st.session_state.data_loader.get_available_dates(instrument)
         if not available_dates:
             st.sidebar.error("No dates available for selected instrument")
             return None
     except Exception as e:
         st.sidebar.error(f"Error loading dates: {e}")
-        logger.error(f"Error getting available dates for {primary_instrument}: {e}")
         return None
-    
-    # Date range selection option
-    date_selection_mode = st.sidebar.radio(
-        "Select Date Range Mode:",
-        options=["All Available Data", "Custom Date Range"],
-        help="Choose whether to use all data or select specific date range"
-    )
-    
-    start_date = None
-    end_date = None
-    
-    if date_selection_mode == "Custom Date Range":
-        min_date = min(available_dates)
-        max_date = max(available_dates)
-        
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            start_date = st.date_input(
-                "Start Date",
-                value=min_date,
-                min_value=min_date,
-                max_value=max_date,
-                help="Select starting date for analysis"
-            )
-        with col2:
-            end_date = st.date_input(
-                "End Date",
-                value=max_date,
-                min_value=min_date,
-                max_value=max_date,
-                help="Select ending date for analysis"
-            )
-        
-        # Validate date range
-        if start_date > end_date:
-            st.sidebar.error("⚠️ Start date must be before end date!")
-            return None
-        
-        # Filter available dates to only include those in the selected range
-        dates_in_range = [d for d in available_dates if start_date <= d <= end_date]
-        if not dates_in_range:
-            st.sidebar.error("⚠️ No data available in the selected date range!")
-            return None
-        
-        # Show selected date range info
-        st.sidebar.info(f"📊 Selected: {len(dates_in_range)} day(s) of data")
-    else:
-        # Show info about all available data
-        total_days = len(available_dates)
-        date_range = f"{min(available_dates).strftime('%d-%m-%Y')} to {max(available_dates).strftime('%d-%m-%Y')}"
-        st.sidebar.info(f"📊 Using all data: {total_days} day(s)")
-        st.sidebar.caption(f"Range: {date_range}")
-    
-    # Timeframe removed for flat daily mode; retain selection only if legacy intraday available
-    loader = st.session_state.data_loader
-    if getattr(loader, 'flat_mode', False):
-        selected_timeframe = '1day'
-        st.sidebar.info("Full dataset daily analysis (no timeframe selection needed).")
-    else:
-        all_timeframes = st.session_state.data_aggregator.get_supported_timeframes()
-        default_index = 1 if len(all_timeframes) > 1 else 0
-        selected_timeframe = st.sidebar.selectbox(
-            "⏱️ Timeframe",
-            all_timeframes,
-            index=default_index,
-            help="Select analysis timeframe"
-        )
-    
-    # Pattern selection
-    st.sidebar.subheader("🔍 Patterns")
-    selected_patterns = {}
-    all_checked = st.sidebar.checkbox("Select All", value=True)
-    for name in PATTERN_DETECTORS.keys():
-        selected_patterns[name] = st.sidebar.checkbox(
-            name.replace('_', ' '),
-            value=all_checked,
-            help=f"Detect {name} patterns"
-        )
 
-    # Structural scan controls
-    st.sidebar.subheader("🏗️ Structural Scan (Multi-month)")
-    enable_struct = st.sidebar.checkbox("Enable 6-month structural scan", value=True)
-    struct_months = st.sidebar.select_slider("Window", options=[3, 6, 9, 12], value=6, help="Sliding window size in months")
-    struct_patterns = st.sidebar.multiselect(
-        "Structural Patterns",
-        options=["Head & Shoulders", "Double Top", "Double Bottom"],
-        default=["Head & Shoulders", "Double Top", "Double Bottom"],
-        help="Patterns to search across the multi-month window"
+    min_date = min(available_dates)
+    max_date = max(available_dates)
+    total_years = max(1, int((max_date - min_date).days // 365))
+
+    # Timeframe selection: handle small datasets gracefully
+    st.sidebar.subheader("⏱️ Timeframe")
+    if total_years <= 1:
+        years_window = 1
+        st.sidebar.caption(
+            f"Limited history available (~{(max_date - min_date).days} days). Using all data.")
+    else:
+        years_window = st.sidebar.slider(
+            "Years to analyze",
+            min_value=1,
+            max_value=total_years,
+            value=total_years,
+            key=f"years_slider_{instrument}",  # reset when stock changes
+            help="Select how many recent years to include (ending at the most recent date)"
+        )
+    st.sidebar.caption(f"Data range: {min_date.strftime('%d-%m-%Y')} → {max_date.strftime('%d-%m-%Y')}")
+
+    # Structural pattern selection (only the three requested)
+    st.sidebar.subheader("🔍 Patterns")
+    pattern_options = ["Head & Shoulders", "Double Top", "Double Bottom"]
+    selected_struct_patterns = st.sidebar.multiselect(
+        "Select Patterns",
+        options=pattern_options,
+        default=pattern_options,
+        help="Choose which structural patterns to find"
     )
 
     # Confidence threshold
-    confidence_threshold = st.sidebar.slider(
-        "Min Confidence", 0.0, 1.0, 0.0, 0.05,
-        help="Only show patterns with confidence >= threshold"
+    min_confidence = st.sidebar.slider(
+        "Min Confidence",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.5,
+        step=0.05,
+        help="Only show patterns with confidence ≥ this value"
     )
 
-    
-    # Quick settings
-    st.sidebar.subheader("⚙️ Settings")
-    
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        max_candles = st.number_input(
-            "Max Candles",
-            min_value=50,
-            max_value=2000,
-            value=500,
-            step=50,
-            help="Maximum candles to display"
-        )
-    with col2:
-        chart_height = st.number_input(
-            "Chart Height",
-            min_value=300,
-            max_value=1000,
-            value=550,
-            step=50,
-            help="Chart height in pixels"
-        )
-    
-    # Analysis button
-    run_analysis = st.sidebar.button(
-        "🚀 Analyze Patterns",
-        type="primary",
-        use_container_width=True
-    )
-    
+    # Run button
+    run_analysis = st.sidebar.button("🚀 Analyze", type="primary", use_container_width=True)
+
+    # Minimal config
     return {
         'instruments': selected_instruments,
-        'instrument': selected_instruments[0],  # backward compat for single use
-        'timeframe': selected_timeframe,
-        'patterns': selected_patterns,
-        'max_candles': max_candles,
-        'chart_height': chart_height,
+        'instrument': instrument,
+        'timeframe': '1day',
         'run_analysis': run_analysis,
-        'date_mode': date_selection_mode,
-        'start_date': start_date,
-        'end_date': end_date,
-        'confidence_threshold': confidence_threshold,
-        'multi_mode': multi_mode,
-        # structural
-        'enable_struct': enable_struct,
-        'struct_months': struct_months,
-        'struct_patterns': struct_patterns
+        # timeframe selection
+        'years_window': years_window,
+        'total_years': total_years,
+        # selected structural patterns
+        'struct_patterns': selected_struct_patterns,
+        'min_confidence': min_confidence,
+        # Simple chart defaults
+        'chart_height': 600,
+        'max_candles': 100000,
     }
 
 
@@ -309,23 +195,19 @@ def show_welcome_screen():
     
     with col2:
         st.markdown("""
-        ### 👋 Welcome to Stock Pattern Detector
+        ### 👋 Welcome
         
-        **Get Started:**
-        1. Select a stock instrument from the sidebar
-        2. Select patterns to detect
-        3. Click "Analyze Patterns"
+        Detect large multi-month patterns:
+        - Head & Shoulders
+        - Double Top
+        - Double Bottom
         
-        **Features:**
-        - 📊 Clean, readable candlestick charts
-        - 🎯 Clear pattern markers with confidence levels
-        - ⚡ Fast, responsive interface
-        - 📈 Professional trading visualization
+        Default view scans the full available timeframe. Use the Years slider in the sidebar to reduce the window.
         """)
         
-        st.info("👈 Configure your analysis in the sidebar to begin")
+        st.info("👈 Select a stock, adjust Years if needed, and click Analyze")
     
-    # Show quick preview of a random instrument
+    # Quick preview remains minimal
     show_quick_preview()
 
 
@@ -333,326 +215,313 @@ def show_quick_preview():
     """Show a quick preview chart of sample data"""
     try:
         st.markdown("### 📊 Quick Preview")
-        st.markdown("*Sample chart showing candlestick visualization*")
         
-        # Try to load sample data for preview
         instruments = st.session_state.data_loader.get_available_instruments()
         if instruments:
-            # Use first available instrument for preview
             preview_instrument = instruments[0]
             data = st.session_state.data_loader.load_instrument_data(preview_instrument)
-            
             if data is not None and not data.empty:
-                # Get last 50 candles for preview
-                preview_data = data.tail(50)
-                
-                # Create compact preview chart
+                preview_data = data.tail(80)
                 preview_chart = st.session_state.chart_renderer.create_compact_chart(
                     data=preview_data,
-                    patterns=None,  # No patterns for preview
-                    title=f"{preview_instrument} - Sample Chart",
+                    patterns=None,
+                    title=f"{preview_instrument} - Sample",
                     height=300
                 )
-                
                 st.plotly_chart(preview_chart, use_container_width=True, key="preview_chart")
-                st.caption(f"Sample data from {preview_instrument} (last 50 candles)")
-            else:
-                st.info("Preview chart will appear here once data is available")
-        else:
-            st.info("No sample data available for preview")
-            
-    except Exception as e:
-        # Don't show errors for preview - just skip it
-        st.info("Preview chart will appear here once you run analysis")
+    except Exception:
+        pass
 
 
 def run_analysis(config: Dict[str, Any]):
-    """Run pattern analysis with improved UI"""
-    instruments = config.get('instruments', [config['instrument']])
-    instrument = instruments[0]
-    timeframe = config['timeframe']
-    patterns = config['patterns']
-    date_mode = config['date_mode']
-    start_date = config['start_date']
-    end_date = config['end_date']
-    
-    # Check if any patterns are selected
-    selected_pattern_names = [name for name, selected in patterns.items() if selected]
-    if not selected_pattern_names:
-        st.warning("⚠️ Please select at least one pattern to detect")
-        return
-    
-    # Progress tracking
+    """Run structural pattern analysis with two charts"""
+    instrument = config['instrument']
+
     progress_container = st.container()
+
+    # Build the selected window using the years slider (ending at latest date)
+    try:
+        available_dates = st.session_state.data_loader.get_available_dates(instrument)
+        max_date = max(available_dates)
+        min_date = min(available_dates)
+        total_years = max(1, int((max_date - min_date).days // 365))
+    except Exception:
+        st.error("Failed to determine available dates for instrument")
+        return
+
+    years = int(config.get('years_window', total_years))
+    # Clamp years to available range (handles stock change where old slider value was larger)
+    years = max(1, min(years, total_years))
+    start_date = max_date - timedelta(days=365 * years)
+    date_info = f" (Last {years} year(s))"
+
     with progress_container:
-        date_info = ""
-        if date_mode == "Custom Date Range" and start_date and end_date:
-            date_info = f" ({start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')})"
-        
-    title_tf = '' if (getattr(st.session_state.data_loader, 'flat_mode', False)) else f" - {timeframe}"
-    multi_suffix = '' if len(instruments) == 1 else f" (+{len(instruments)-1} more)"
-    st.markdown(f"### 📊 Analyzing {instrument}{multi_suffix}{title_tf}{date_info}")
+        st.markdown(f"### 📊 Analyzing {instrument}{date_info}")
+
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
-    # Load data with optional date filtering
+
+    # Load data (selected window)
     status_text.info("📥 Loading data...")
-    progress_bar.progress(20)
+    progress_bar.progress(15)
 
-    # Convert date objects for the loader if needed
-    start_datetime = None
-    end_datetime = None
+    df_sel = st.session_state.data_loader.load_instrument_data(
+        instrument,
+        start_date=start_date,
+        end_date=None
+    )
 
-    if date_mode == "Custom Date Range":
-        if start_date:
-            start_datetime = start_date
-        if end_date:
-            end_datetime = end_date
-        
-    # Load all instruments (sequential for simplicity)
-    data_map = {}
-    for inst in instruments:
-        data_map[inst] = st.session_state.data_loader.load_instrument_data(inst, start_date=start_datetime, end_date=end_datetime)
-    data = data_map[instrument]
-        
-    if data is None or data.empty:
-        if date_mode == "Custom Date Range":
-            st.error(f"❌ No data available for {instrument} in the selected date range")
-        else:
-            st.error(f"❌ No data available for {instrument}")
+    if df_sel is None or df_sel.empty:
+        st.error("❌ No data available for selected timeframe")
         return
-        
-    # Aggregate data
-    if getattr(st.session_state.data_loader, 'flat_mode', False):
-        status_text.info("🔄 Preparing data (daily)...")
-        progress_bar.progress(40)
-        agg_map = {inst: df.copy() for inst, df in data_map.items() if df is not None}
-    else:
-        status_text.info("🔄 Processing timeframe...")
-        progress_bar.progress(40)
-        agg_map = {}
-        for inst, df in data_map.items():
-            if df is not None:
-                agg_map[inst] = st.session_state.data_aggregator.aggregate_data(df, timeframe)
-    agg_data = agg_map.get(instrument)
-    if agg_data is None or agg_data.empty:
-        st.error(f"❌ Failed to process {timeframe} data")
-        return
-        
-    # Detect standard patterns
-    status_text.info("🔍 Detecting candlestick patterns...")
-    progress_bar.progress(60)
-    
-    pattern_results_map = {}
-    cf = config['confidence_threshold']
-    for inst, df in agg_map.items():
-        inst_patterns = []
-        if df is None or df.empty:
-            pattern_results_map[inst] = []
-            continue
-        for pattern_name in selected_pattern_names:
-            detector = PATTERN_DETECTORS[pattern_name]
-            try:
-                found_patterns = detector.detect(df, timeframe)
-                found_patterns = [p for p in found_patterns if p.confidence >= cf]
-                inst_patterns.extend(found_patterns)
-            except Exception as e:
-                st.warning(f"⚠️ Error detecting {pattern_name} in {inst}: {e}")
-        pattern_results_map[inst] = inst_patterns
-    all_patterns = pattern_results_map[instrument]
 
-    # Structural scan over multi-month window (sliding)
+    # Full data (for bigger timeframe context)
+    df_full = st.session_state.data_loader.load_instrument_data(instrument)
+    if df_full is None or df_full.empty:
+        df_full = df_sel.copy()
+
+    # Ensure daily candles
+    try:
+        df_sel_daily = st.session_state.data_aggregator.aggregate_data(df_sel, '1day') if not getattr(st.session_state.data_loader, 'flat_mode', False) else df_sel.copy()
+    except Exception:
+        df_sel_daily = df_sel.copy()
+    try:
+        df_full_daily = st.session_state.data_aggregator.aggregate_data(df_full, '1day') if not getattr(st.session_state.data_loader, 'flat_mode', False) else df_full.copy()
+    except Exception:
+        df_full_daily = df_full.copy()
+
+    # Structural scan with adaptive timeframe fallback
+    status_text.info("🏗️ Scanning for structural patterns...")
+    progress_bar.progress(55)
+
+    # Map selected human names to internal codes
+    mapping = {
+        "Head & Shoulders": 'head_and_shoulders',
+        "Double Top": 'double_top',
+        "Double Bottom": 'double_bottom',
+    }
+    wanted = [mapping[p] for p in config.get('struct_patterns', []) if p in mapping]
+    if not wanted:
+        wanted = list(mapping.values())
+
+    # Build candidate months list (decreasing timeframe)
+    sel_months = years * 12
+    candidates = []
+    for m in [sel_months, 96, 72, 60, 48, 36, 24, 12, 9, 6, 3]:
+        if m > 0 and m <= sel_months:
+            candidates.append(m)
+    # Ensure unique order
+    seen = set()
+    months_list = []
+    for m in candidates:
+        if m not in seen:
+            months_list.append(m)
+            seen.add(m)
+
     struct_segments = []
-    if config.get('enable_struct', True):
-        status_text.info("🏗️ Running structural scan...")
-        progress_bar.progress(75)
-        months = int(config.get('struct_months', 6))
-        days_window = int(months * 21)  # ~21 trading days per month
-        # Use daily candles for structural scan to represent months clearly
-        if getattr(st.session_state.data_loader, 'flat_mode', False):
-            df_struct = agg_data.copy()
-        else:
-            try:
-                df_struct = st.session_state.data_aggregator.aggregate_data(data, '1day')
-            except Exception:
-                df_struct = agg_data.copy()
-        df = df_struct
-        if df is not None and len(df) >= max(60, days_window):
-            # Sliding window with step ~10-20% of window
-            step = max(10, days_window // 6)
-            patterns_map = {
-                "Head & Shoulders": "head_and_shoulders",
-                "Double Top": "double_top",
-                "Double Bottom": "double_bottom",
-            }
-            wanted = [patterns_map[p] for p in config.get('struct_patterns', []) if p in patterns_map]
-            if not wanted:
-                wanted = ["head_and_shoulders", "double_top", "double_bottom"]
-            segments_collected: List[Dict[str, Any]] = []
-            for start in range(0, max(1, len(df) - days_window + 1), step):
-                end = start + days_window
-                window = df.iloc[start:end]
-                try:
-                    segs = st.session_state.struct_scanner.scan(window, patterns=wanted)
-                    # Offset indices to global df
-                    for s in segs:
-                        s['start_idx'] = s['start_idx'] + start
-                        s['end_idx'] = s['end_idx'] + start
-                        # adjust datetimes
-                        if 'datetime' in df.columns:
-                            s['start_dt'] = df['datetime'].iloc[s['start_idx']]
-                            s['end_dt'] = df['datetime'].iloc[s['end_idx']]
-                    segments_collected.extend(segs)
-                except Exception:
-                    pass
-            # sort and keep top by confidence
-            struct_segments = sorted(segments_collected, key=lambda x: x.get('confidence', 0), reverse=True)[:10]
-        else:
-            st.info("Not enough data for structural scan window")
+    used_months = 0
+    attempted_months: List[int] = []
 
-    # Create visualization
-    status_text.info("📈 Creating chart...")
-    progress_bar.progress(90)
-    
-    # Clear progress
+    for months in months_list:
+        days_window = int(months * 21)
+        if len(df_full_daily) < max(60, days_window):
+            continue
+        attempted_months.append(months)
+        window = df_full_daily.iloc[-days_window:]
+        try:
+            segs = st.session_state.struct_scanner.scan(window, patterns=wanted)
+            # Adjust to global indices (relative to df_full_daily)
+            offset = len(df_full_daily) - len(window)
+            for s in segs:
+                s['start_idx'] = s['start_idx'] + offset
+                s['end_idx'] = s['end_idx'] + offset
+                if 'datetime' in df_full_daily.columns:
+                    s['start_dt'] = df_full_daily['datetime'].iloc[s['start_idx']]
+                    s['end_dt'] = df_full_daily['datetime'].iloc[s['end_idx']]
+            # Filter by confidence threshold
+            threshold = float(config.get('min_confidence', 0.5))
+            segs = [s for s in segs if s.get('confidence', 0.0) >= threshold]
+            if segs:
+                struct_segments = sorted(segs, key=lambda x: x.get('confidence', 0.0), reverse=True)
+                used_months = months
+                break
+        except Exception:
+            continue
+
+    # Count those happening "now" (ending within last 3 bars of full data)
+    now_cut = len(df_full_daily) - 3
+    now_segments = [s for s in struct_segments if s.get('end_idx', 0) >= now_cut]
+
+    # Charts
+    status_text.info("📈 Creating charts...")
+    progress_bar.progress(80)
+
+    # Finish progress and render in display_results
     progress_bar.progress(100)
-    time.sleep(0.3)
+    time.sleep(0.2)
     progress_container.empty()
-    
+
     # Display results
-    display_results(instrument, timeframe, agg_data, all_patterns, config, pattern_results_map if len(instruments)>1 else None, struct_segments)
+    config['used_months'] = used_months
+    config['attempted_months'] = attempted_months
+    config['years_window'] = years
+    display_results(
+        instrument=instrument,
+        data_main=df_sel_daily,
+        data_big=df_full_daily,
+        struct_segments=struct_segments,
+        now_count=len(now_segments),
+        config=config
+    )
 
 
-def display_results(instrument: str, timeframe: str, data: pd.DataFrame, 
-                   patterns: List[PatternResult], config: Dict[str, Any], multi_results: Dict[str, List[PatternResult]] = None,
-                   struct_segments: List[Dict[str, Any]] = None):
-    """Display analysis results with clean layout"""
-    
-    # Show date range info if custom range was used
-    if config.get('date_mode') == "Custom Date Range":
-        start_date = config.get('start_date')
-        end_date = config.get('end_date')
-        if start_date and end_date:
-            st.info(f"📅 Analysis period: {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')} ({(end_date - start_date).days + 1} days)")
-    
-    # Summary metrics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("📊 Data Points", f"{len(data):,}")
-    with col2:
-        st.metric("🔍 Patterns Found", len(patterns))
-    with col3:
-        if patterns:
-            avg_confidence = sum(p.confidence for p in patterns) / len(patterns)
-            st.metric("📈 Avg Confidence", f"{avg_confidence:.1%}")
-        else:
-            st.metric("📈 Avg Confidence", "N/A")
-    with col4:
-        if patterns:
-            high_conf_patterns = [p for p in patterns if p.confidence >= 0.7]
-            st.metric("🎯 High Confidence", len(high_conf_patterns))
-        else:
-            st.metric("🎯 High Confidence", "0")
-    
-    # Main chart
-    st.markdown("### 📈 Price Chart with Pattern Indicators")
-    
+def display_results(instrument: str, data_main: pd.DataFrame, data_big: pd.DataFrame,
+                    struct_segments: List[Dict[str, Any]], now_count: int, config: Dict[str, Any]):
+    """Display two charts and a concise summary"""
+
+    used_months = int(config.get('used_months', 0))
+    used_years = used_months / 12 if used_months else None
+
+    if not struct_segments:
+        # No detections – be explicit and helpful
+        attempted = config.get('attempted_months', [])
+        attempted_str = ", ".join(str(m) for m in attempted) if attempted else "-"
+        st.warning(
+            f"No structural patterns found ≥ {config.get('min_confidence',0.5):.2f} confidence.\n"
+            f"Tried windows (months): {attempted_str}.\n"
+            f"Tips: try a smaller Years window or lower the Min Confidence."
+        )
+    else:
+        window_note = f" using ~{used_years:.1f}y window" if used_years else ""
+        st.success(f"Found {len(struct_segments)} structural pattern segment(s){window_note}. {now_count} near the current date.")
+
+    # Helper: map global segments to main data indices (if overlapping)
+    def map_segments_to_df(df: pd.DataFrame, segments: List[Dict[str, Any]]):
+        if df is None or df.empty or not segments or 'datetime' not in df.columns:
+            return []
+        dts = df['datetime']
+        idx_map = {dt: i for i, dt in enumerate(dts)}
+        mapped = []
+        for s in segments:
+            sd = s.get('start_dt')
+            ed = s.get('end_dt')
+            if sd in idx_map and ed in idx_map:
+                ns = dict(s)
+                ns['start_idx'] = idx_map[sd]
+                ns['end_idx'] = idx_map[ed]
+                mapped.append(ns)
+        return mapped
+
+    # Main chart (selected timeframe)
+    st.markdown("### 📈 Main Chart (Selected Timeframe)")
     try:
         chart = st.session_state.chart_renderer.create_simple_chart(
-            data=data,
-            patterns=patterns,
-            title=f"{instrument} - {timeframe}",
+            data=data_main,
+            patterns=None,
+            title=f"{instrument}",
             height=config['chart_height'],
             max_candles=config['max_candles']
         )
-        # Overlay structural segments if any
-        if struct_segments:
-            st.session_state.chart_renderer.add_structural_segments(chart, data, struct_segments)
-        st.plotly_chart(chart, use_container_width=True)
-        # Download detected patterns (if any) as CSV
-        if patterns or struct_segments:
-            try:
-                export_rows = []
-                for p in patterns or []:
-                    export_rows.append({
-                        'instrument': instrument,
-                        'datetime': p.datetime.strftime('%Y-%m-%d %H:%M:%S'),
-                        'pattern_type': p.pattern_type,
-                        'confidence': p.confidence,
-                        'type': 'candle'
-                    })
-                for s in struct_segments or []:
-                    export_rows.append({
-                        'instrument': instrument,
-                        'start_dt': s.get('start_dt'),
-                        'end_dt': s.get('end_dt'),
-                        'pattern_type': s.get('pattern_type'),
-                        'confidence': s.get('confidence'),
-                        'status': s.get('status'),
-                        'type': 'structural'
-                    })
-                if export_rows:
-                    export_df = pd.DataFrame(export_rows)
-                    csv_bytes = export_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="💾 Download Findings CSV",
-                        data=csv_bytes,
-                        file_name=f"findings_{instrument}_{timeframe}.csv",
-                        mime='text/csv',
-                        use_container_width=True
-                    )
-            except Exception as e:
-                st.warning(f"Export unavailable: {e}")
-        
+        segs_on_main = map_segments_to_df(data_main, struct_segments)
+        if segs_on_main:
+            st.session_state.chart_renderer.add_structural_segments(chart, data_main, segs_on_main)
+        st.plotly_chart(chart, use_container_width=True, key=f"main_chart_{instrument}_{config.get('years_window','all')}_{len(data_main)}")
     except Exception as e:
-        st.error(f"❌ Error creating chart: {e}")
-    
-    # Multi-instrument summary (if applicable)
-    if multi_results:
-        try:
-            st.markdown("### 🧮 Multi-Instrument Pattern Summary")
-            summary_rows = []
-            for inst, plist in multi_results.items():
-                counts = {}
-                for p in plist:
-                    counts[p.pattern_type] = counts.get(p.pattern_type, 0) + 1
-                summary_rows.append({
-                    'Instrument': inst,
-                    'Total': len(plist),
-                    **{k.replace('_',' ').title(): v for k, v in counts.items()}
-                })
-            if summary_rows:
-                summary_df = pd.DataFrame(summary_rows).sort_values('Total', ascending=False)
-                st.dataframe(summary_df, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Summary error: {e}")
+        st.error(f"❌ Error creating main chart: {e}")
 
-    # Pattern details
-    if patterns:
-        display_pattern_details(patterns, data, config)
-    else:
-        st.info("ℹ️ No single-candle patterns detected in the selected timeframe")
+    # Bigger timeframe context chart
+    st.markdown("### 🧭 Bigger Timeframe Context")
+    try:
+        big_chart = st.session_state.chart_renderer.create_simple_chart(
+            data=data_big,
+            patterns=None,
+            title=f"{instrument}",
+            height=config['chart_height'],
+            max_candles=config['max_candles']
+        )
+        if struct_segments:
+            st.session_state.chart_renderer.add_structural_segments(big_chart, data_big, struct_segments)
+        st.plotly_chart(big_chart, use_container_width=True, key=f"context_chart_{instrument}_{used_months}_{len(data_big)}")
+    except Exception as e:
+        st.error(f"❌ Error creating context chart: {e}")
 
-    # Structural segments details
+    # List all segments grouped by pattern
     if struct_segments:
-        st.markdown("### 🧩 Structural Pattern Segments")
+        st.markdown("### 🧩 Detected Segments")
         try:
             df = pd.DataFrame(struct_segments)
             if not df.empty:
-                # prettify
                 df['pattern'] = df['pattern_type'].str.replace('_', ' ').str.title()
-                df['confidence'] = (df['confidence'].astype(float) * 100).round(1).astype(str) + '%'
-                df = df[['pattern', 'status', 'confidence', 'start_dt', 'end_dt', 'start_idx', 'end_idx']]
-                st.dataframe(df, use_container_width=True)
+                df = df.sort_values(['pattern', 'confidence'], ascending=[True, False])
+                # Pretty confidence
+                df['confidence'] = (df['confidence'].astype(float) * 100).round(1)
+                # Select and rename columns for display
+                out = df[['pattern', 'status', 'confidence', 'start_dt', 'end_dt', 'start_idx', 'end_idx']]
+                out = out.rename(columns={'confidence': 'confidence %'})
+                st.dataframe(out, use_container_width=True)
         except Exception as e:
-            st.warning(f"Could not display structural segments: {e}")
+            st.warning(f"Could not display segments: {e}")
 
-    # Instrument summary (always show at bottom)
+    # Per-pattern mini charts for each detection
+    if struct_segments:
+        st.markdown("### 📌 Pattern Windows")
+        show_all = st.checkbox("Show all detections (may be slow)", value=False, key=f"show_all_{instrument}")
+        # group by pattern
+        by_pat: Dict[str, List[Dict[str, Any]]] = {}
+        for s in struct_segments:
+            by_pat.setdefault(s['pattern_type'], []).append(s)
+        for pat, segs in by_pat.items():
+            st.subheader(pat.replace('_',' ').title())
+            segs = sorted(segs, key=lambda x: x.get('confidence', 0.0), reverse=True)
+            limit = len(segs) if show_all else min(5, len(segs))
+            cols = st.columns(1 if limit <= 1 else 2)
+            for i, seg in enumerate(segs[:limit]):
+                try:
+                    s_idx = max(0, seg['start_idx'] - 10)
+                    e_idx = min(len(data_big) - 1, seg['end_idx'] + 10)
+                    window = data_big.iloc[s_idx:e_idx+1]
+                    title = f"{pat.replace('_',' ').title()} | {seg.get('status','')} | {seg.get('confidence',0.0):.0%}"
+                    chart = st.session_state.chart_renderer.create_simple_chart(
+                        data=window,
+                        patterns=None,
+                        title=title,
+                        height=350,
+                        max_candles=100000
+                    )
+                    # Highlight only this segment in the window for clarity
+                    st.session_state.chart_renderer.add_structural_segments(
+                        chart,
+                        window,
+                        [{**seg, 'start_idx': seg['start_idx']-s_idx, 'end_idx': seg['end_idx']-s_idx}]
+                    )
+                    cols[i % len(cols)].plotly_chart(chart, use_container_width=True, key=f"mini_chart_{pat}_{seg.get('start_idx')}_{seg.get('end_idx')}")
+                except Exception as e:
+                    st.warning(f"Mini chart error: {e}")
+
+    # Focused zoom on top segment
+    if struct_segments:
+        top = struct_segments[0]
+        st.markdown(f"### 🔍 Top Pattern Region: {top.get('pattern_type','').replace('_',' ').title()} ({top.get('confidence',0.0):.0%})")
+        try:
+            s_idx = max(0, top['start_idx'] - 10)
+            e_idx = min(len(data_big) - 1, top['end_idx'] + 10)
+            window = data_big.iloc[s_idx:e_idx+1]
+            zoom_chart = st.session_state.chart_renderer.create_simple_chart(
+                data=window,
+                patterns=None,
+                title=f"{instrument} - Focused Region",
+                height=config['chart_height'],
+                max_candles=config['max_candles']
+            )
+            st.plotly_chart(zoom_chart, use_container_width=True, key=f"zoom_chart_{instrument}_{top.get('start_idx')}_{top.get('end_idx')}")
+        except Exception as e:
+            st.warning(f"Zoom error: {e}")
+
+    # Basic data summary
     try:
         info = st.session_state.data_loader.get_data_info(instrument)
         if info:
-            with st.expander("📄 Instrument Data Summary"):
+            with st.expander("📄 Data Summary"):
                 st.write({
                     'Records': info.get('total_records'),
                     'Date Range': info.get('date_range'),
@@ -665,65 +534,8 @@ def display_results(instrument: str, timeframe: str, data: pd.DataFrame,
 
 
 def display_pattern_details(patterns: List[PatternResult], data: pd.DataFrame, config: Dict[str, Any]):
-    """Display pattern details in a clean format"""
-    
-    st.markdown("### 📋 Pattern Details")
-    
-    # Sort patterns by confidence
-    sorted_patterns = sorted(patterns, key=lambda x: x.confidence, reverse=True)
-    
-    # Display top patterns
-    for i, pattern in enumerate(sorted_patterns[:10]):  # Show top 10
-        with st.expander(
-            f"#{i+1} {pattern.pattern_type.replace('_', ' ').title()} - {pattern.confidence:.1%} confidence",
-            expanded=i < 3  # Expand first 3
-        ):
-            col1, col2 = st.columns([1, 2])
-            
-            with col1:
-                st.markdown(f"""
-                **Pattern:** {pattern.pattern_type.replace('_', ' ').title()}  
-                **Confidence:** {pattern.confidence:.1%}  
-                **Date:** {pattern.datetime.strftime('%Y-%m-%d')}  
-                **Time:** {pattern.datetime.strftime('%H:%M')}
-                """)
-                
-                # Pattern strength indicator
-                if pattern.confidence >= 0.8:
-                    st.success("🟢 High Confidence")
-                elif pattern.confidence >= 0.6:
-                    st.warning("🟡 Medium Confidence") 
-                else:
-                    st.info("🔵 Low Confidence")
-            
-            with col2:
-                # Create focused chart for this pattern
-                try:
-                    detail_chart = st.session_state.chart_renderer.create_pattern_detail_chart(
-                        data=data,
-                        pattern=pattern,
-                        context_candles=15
-                    )
-                    st.plotly_chart(detail_chart, use_container_width=True, key=f"pattern_{i}")
-                except Exception as e:
-                    st.error(f"Error creating detail chart: {e}")
-    
-    # Pattern summary table
-    if len(patterns) > 10:
-        st.markdown("### 📊 All Patterns Summary")
-        
-        # Create summary DataFrame
-        pattern_data = []
-        for pattern in sorted_patterns:
-            pattern_data.append({
-                'Pattern': pattern.pattern_type.replace('_', ' ').title(),
-                'Confidence': f"{pattern.confidence:.1%}",
-                'Date': pattern.datetime.strftime('%Y-%m-%d'),
-                'Time': pattern.datetime.strftime('%H:%M')
-            })
-        
-        pattern_df = pd.DataFrame(pattern_data)
-        st.dataframe(pattern_df, use_container_width=True)
+    """(Deprecated in simplified UI)"""
+    pass
 
 
 if __name__ == "__main__":
