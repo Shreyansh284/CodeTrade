@@ -23,16 +23,20 @@ class PatternResult:
     confidence: float
     timeframe: str
     candle_index: int
+    metadata: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert pattern result to dictionary format."""
-        return {
+        result = {
             'datetime': self.datetime,
             'pattern_type': self.pattern_type,
             'confidence': self.confidence,
             'timeframe': self.timeframe,
             'candle_index': self.candle_index
         }
+        if self.metadata is not None:
+            result['metadata'] = self.metadata
+        return result
     
     def to_csv_row(self) -> Dict[str, Any]:
         """Convert pattern result to CSV export format."""

@@ -9,9 +9,20 @@ import os
 import time
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
-import streamlit as st
+
+# Optional Streamlit import for progress messages; fall back to no-op when unavailable
+try:
+    import streamlit as st  # type: ignore
+except Exception:
+    st = None  # type: ignore
+
+class _NoOpProgress:
+    def info(self, *args, **kwargs):
+        return None
+    def empty(self):
+        return None
 
 from utils.logging_config import get_logger
 from utils.error_handler import (
@@ -351,7 +362,8 @@ class CSVLoader:
             elif end_date:
                 date_info = f" (until {end_date.strftime('%d-%m-%Y')})"
             
-            progress_placeholder = st.empty()
+            # Progress UI (Streamlit) is optional
+            progress_placeholder = st.empty() if st else _NoOpProgress()
             progress_placeholder.info(f"📥 Loading data for {instrument}{date_info}...")
             
             if not csv_files:
@@ -383,9 +395,10 @@ class CSVLoader:
                 try:
                     # Update progress
                     progress = (i + 1) / len(csv_files)
-                    progress_placeholder.info(
-                        f"📥 Loading {instrument}: {i+1}/{len(csv_files)} files ({progress:.0%})"
-                    )
+                    if st:
+                        progress_placeholder.info(
+                            f"📥 Loading {instrument}: {i+1}/{len(csv_files)} files ({progress:.0%})"
+                        )
                     
                     df = self._load_single_csv(csv_file)
                     if df is not None and not df.empty:
@@ -398,7 +411,8 @@ class CSVLoader:
                     logger.warning(f"Failed to load {csv_file.name}: {e}")
             
             # Clear progress indicator
-            progress_placeholder.empty()
+            if st:
+                progress_placeholder.empty()
             
             if not dataframes:
                 raise DataLoadingError(
@@ -473,6 +487,20 @@ class CSVLoader:
                 error_code="UNEXPECTED_LOAD_ERROR",
                 context={'instrument': instrument}
             ) from e
+
+    # Backward-compatibility alias for older UI code paths
+    def load_data(self, instrument: str, start_date: Optional[datetime] = None,
+                  end_date: Optional[datetime] = None) -> Optional[pd.DataFrame]:
+        """Compat shim: forwards to load_instrument_data.
+
+        Accepts either datetime or date for start/end and normalizes.
+        """
+        # Normalize start/end to datetime at midnight when given as date
+        if isinstance(start_date, date) and not isinstance(start_date, datetime):
+            start_date = datetime.combine(start_date, datetime.min.time())
+        if isinstance(end_date, date) and not isinstance(end_date, datetime):
+            end_date = datetime.combine(end_date, datetime.min.time())
+        return self.load_instrument_data(instrument, start_date, end_date)
     
     def _load_single_csv(self, csv_file: Path) -> Optional[pd.DataFrame]:
         """
@@ -850,11 +878,14 @@ class CSVLoader:
                 # Filter cached data if date range specified
                 df_cached = cached
                 if start_date or end_date:
+                    # Compare on date objects to avoid datetime vs date mismatches
+                    start_d = start_date.date() if isinstance(start_date, datetime) else start_date
+                    end_d = end_date.date() if isinstance(end_date, datetime) else end_date
                     mask = True
-                    if start_date:
-                        mask &= df_cached['datetime'].dt.date >= start_date
-                    if end_date:
-                        mask &= df_cached['datetime'].dt.date <= end_date
+                    if start_d:
+                        mask &= df_cached['datetime'].dt.date >= start_d
+                    if end_d:
+                        mask &= df_cached['datetime'].dt.date <= end_d
                     filtered = df_cached[mask].reset_index(drop=True)
                     return filtered
                 return df_cached
@@ -927,11 +958,14 @@ class CSVLoader:
 
             # Optional date range filtering
             if start_date or end_date:
+                # Normalize comparisons on date objects
+                start_d = start_date.date() if isinstance(start_date, datetime) else start_date
+                end_d = end_date.date() if isinstance(end_date, datetime) else end_date
                 mask = True
-                if start_date:
-                    mask &= norm['datetime'].dt.date >= start_date
-                if end_date:
-                    mask &= norm['datetime'].dt.date <= end_date
+                if start_d:
+                    mask &= norm['datetime'].dt.date >= start_d
+                if end_d:
+                    mask &= norm['datetime'].dt.date <= end_d
                 norm = norm[mask].reset_index(drop=True)
                 if norm.empty:
                     return None

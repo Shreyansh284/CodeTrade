@@ -1,7 +1,10 @@
 """
-Simple and effective chart rendering for stock pattern detection.
+Enhanced chart rendering for stock pattern detection with detailed component visualization.
 
-Focused on clean, readable candlestick charts with clear pattern indicators.
+Focused on:
+- Head & Shoulders pattern components (left shoulder, head, right shoulder, neckline)
+- Double Top/Bottom pattern components (first top/bottom, second top/bottom, valley/peak)
+- Clear visual indicators with labels and annotations
 """
 
 import logging
@@ -18,13 +21,13 @@ logger = logging.getLogger(__name__)
 
 class ChartRenderer:
     """
-    Simple chart renderer focused on clarity and performance.
+    Enhanced chart renderer for structural pattern visualization.
     
-    Creates clean candlestick charts with distinctive pattern markers.
+    Creates detailed candlestick charts with comprehensive pattern component display.
     """
     
     def __init__(self):
-        """Initialize with clean, professional settings."""
+        """Initialize with enhanced settings for pattern visualization."""
         self.config = {
             'displayModeBar': True,
             'displaylogo': False,
@@ -32,361 +35,677 @@ class ChartRenderer:
                 'pan2d', 'select2d', 'lasso2d', 'autoScale2d', 
                 'hoverClosestCartesian', 'hoverCompareCartesian'
             ],
-            'responsive': True
+            'responsive': True,
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': 'pattern_chart',
+                'height': 600,
+                'width': 1200,
+                'scale': 1
+            }
         }
         
-        # Clean color scheme for patterns
+        # Enhanced color scheme for structural patterns
+        mono = {
+            'accent': '#111111',
+            'muted': '#777777',
+            'fill_up': 'rgba(0,0,0,0.85)',
+            'fill_down': 'rgba(0,0,0,0.35)'
+        }
         self.pattern_styles = {
-            'dragonfly_doji': {'color': '#FF4444', 'symbol': 'triangle-down', 'size': 12},
-            'hammer': {'color': '#00CC88', 'symbol': 'diamond', 'size': 11},
-            'rising_window': {'color': '#4488FF', 'symbol': 'arrow-up', 'size': 13},
-            'evening_star': {'color': '#FF8800', 'symbol': 'star', 'size': 12},
-            'three_white_soldiers': {'color': '#8844FF', 'symbol': 'triangle-up', 'size': 11}
+            'Head & Shoulders': {
+                'color': mono['accent'],
+                'left_shoulder': {'color': '#444444', 'symbol': 'triangle-up', 'size': 12},
+                'head': {'color': mono['accent'], 'symbol': 'star', 'size': 16},
+                'right_shoulder': {'color': '#444444', 'symbol': 'triangle-up', 'size': 12},
+                'neckline': {'color': mono['accent'], 'dash': 'dash', 'width': 2}
+            },
+            'Inverse Head & Shoulders': {
+                'color': mono['accent'],
+                'left_shoulder': {'color': '#444444', 'symbol': 'triangle-down', 'size': 12},
+                'head': {'color': mono['accent'], 'symbol': 'star', 'size': 16},
+                'right_shoulder': {'color': '#444444', 'symbol': 'triangle-down', 'size': 12},
+                'neckline': {'color': mono['accent'], 'dash': 'dash', 'width': 2}
+            },
+            'Double Top': {
+                'color': mono['accent'],
+                'first_top': {'color': mono['accent'], 'symbol': 'triangle-down', 'size': 14},
+                'second_top': {'color': '#333333', 'symbol': 'triangle-down', 'size': 14},
+                'valley': {'color': '#666666', 'symbol': 'triangle-up', 'size': 10}
+            },
+            'Double Bottom': {
+                'color': mono['accent'],
+                'first_bottom': {'color': mono['accent'], 'symbol': 'triangle-up', 'size': 14},
+                'second_bottom': {'color': '#333333', 'symbol': 'triangle-up', 'size': 14},
+                'peak': {'color': '#666666', 'symbol': 'triangle-down', 'size': 10}
+            }
         }
         
-        self.default_pattern_style = {'color': '#888888', 'symbol': 'circle', 'size': 8}
+        self.default_pattern_style = {'color': '#95A5A6', 'symbol': 'circle', 'size': 8}
     
-    def _get_x_values(self, data: pd.DataFrame):
-        """Return appropriate x-axis values (datetime column if present)."""
-        try:
-            if isinstance(data.index, pd.DatetimeIndex):
-                return data.index
-            if 'datetime' in data.columns:
-                return data['datetime']
-        except Exception:
-            pass
-        return data.index
-    
-    def create_simple_chart(
+    def create_enhanced_pattern_chart(
         self, 
         data: pd.DataFrame, 
         patterns: List[PatternResult] = None,
-        title: str = "Stock Chart",
-        height: int = 500,
-        max_candles: int = 300
+        title: str = "Stock Pattern Analysis",
+        height: int = 600,
+        show_volume: bool = True
     ) -> go.Figure:
         """
-        Create a clean, simple candlestick chart with pattern markers.
+        Create enhanced chart with detailed pattern component visualization.
         
         Args:
-            data: OHLCV DataFrame with datetime index or 'datetime' column
-            patterns: List of detected patterns to highlight
+            data: OHLCV DataFrame with datetime index
+            patterns: List of detected patterns to visualize
             title: Chart title
             height: Chart height in pixels
-            max_candles: Maximum number of candles to display
+            show_volume: Whether to include volume subplot
             
         Returns:
-            Clean Plotly candlestick chart
+            Enhanced Plotly chart with pattern components
         """
         try:
             if data is None or data.empty:
                 return self._create_empty_chart(title, height)
             
-            # Ensure datetime column exists for x-axis
-            if 'datetime' in data.columns:
-                try:
-                    data = data.copy()
-                    data['datetime'] = pd.to_datetime(data['datetime'])
-                except Exception:
-                    pass
+            # Ensure datetime index for plotting if a 'datetime' column exists
+            data = self._ensure_datetime_index(data)
             
-            # Sort by datetime if present
-            if 'datetime' in data.columns:
-                try:
-                    data = data.sort_values('datetime')
-                except Exception:
-                    pass
+            # Create subplots
+            rows = 2 if show_volume and 'volume' in data.columns else 1
+            fig = make_subplots(
+                rows=rows,
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.1,
+                row_heights=[0.7, 0.3] if rows == 2 else [1.0],
+                subplot_titles=("Price & Patterns", "Volume") if rows == 2 else ("Price & Patterns",)
+            )
             
-            # Limit data for better performance and readability
-            original_len = len(data)
-            if len(data) > max_candles:
-                data = data.tail(max_candles).copy()
-                # Adjust pattern indices if needed
-                if patterns:
-                    offset = original_len - len(data)
-                    adjusted_patterns = []
-                    for p in patterns:
-                        if hasattr(p, 'candle_index') and p.candle_index is not None and p.candle_index >= offset:
-                            adjusted_patterns.append(PatternResult(
-                                pattern_type=p.pattern_type,
-                                confidence=p.confidence,
-                                datetime=p.datetime,
-                                timeframe=p.timeframe,
-                                candle_index=p.candle_index - offset
-                            ))
-                    patterns = adjusted_patterns
+            # Add main candlestick chart
+            self._add_enhanced_candlestick(fig, data, row=1)
             
-            # Create figure
-            fig = go.Figure()
-            
-            x_vals = self._get_x_values(data)
-            # Convert to datetime for safety
-            try:
-                if hasattr(x_vals, 'dtype') and not isinstance(x_vals, pd.DatetimeIndex):
-                    x_vals = pd.to_datetime(x_vals)
-            except Exception:
-                pass
-            
-            # Add candlestick trace with better visibility
-            fig.add_trace(go. Candlestick(
-                x=x_vals,
-                open=data['open'],
-                high=data['high'],
-                low=data['low'],
-                close=data['close'],
-                name="Price",
-                increasing_line_color='#2E7D32',
-                decreasing_line_color='#C62828',
-                increasing_fillcolor='rgba(76, 175, 80, 0.7)',
-                decreasing_fillcolor='rgba(244, 67, 54, 0.7)',
-                line=dict(width=1.5)
-            ))
-            
-            # Add pattern markers
+            # Add pattern visualizations
             if patterns:
-                self._add_simple_pattern_markers(fig, patterns, data)
+                self._add_enhanced_pattern_visualization(fig, patterns, data, row=1)
             
-            # Compute x-range to avoid squeezing
-            try:
-                x_min = x_vals.min() if hasattr(x_vals, 'min') else x_vals[0]
-                x_max = x_vals.max() if hasattr(x_vals, 'max') else x_vals[-1]
-            except Exception:
-                x_min, x_max = None, None
+            # Add volume chart if requested
+            if rows == 2:
+                self._add_volume_chart(fig, data, patterns, row=2)
             
-            # Clean layout with better grid visibility and fixed date axis
-            fig.update_layout(
-                title=dict(text=title, x=0.5, font=dict(size=16, color='#2E2E2E')),
-                height=height,
-                margin=dict(l=60, r=60, t=80, b=60),
-                plot_bgcolor='#FAFAFA',
-                paper_bgcolor='white',
-                font=dict(family="Arial, sans-serif", size=12, color='#2E2E2E'),
-                showlegend=False,
-                hovermode='x unified'
-            )
-            fig.update_xaxes(
-                type='date',
-                showgrid=True, gridwidth=1, gridcolor='rgba(128, 128, 128, 0.3)',
-                showline=True, linewidth=1, linecolor='rgba(128, 128, 128, 0.5)',
-                rangeslider=dict(visible=False)
-            )
-            if x_min is not None and x_max is not None:
-                fig.update_xaxes(range=[x_min, x_max])
-            fig.update_yaxes(
-                title="Price",
-                showgrid=True, gridwidth=1, gridcolor='rgba(128, 128, 128, 0.3)',
-                showline=True, linewidth=1, linecolor='rgba(128, 128, 128, 0.5)'
-            )
+            # Enhanced layout
+            self._apply_enhanced_layout(fig, title, height, rows)
             
             return fig
             
         except Exception as e:
-            logger.error(f"Error creating simple chart: {e}")
+            logger.error(f"Error creating enhanced chart: {e}")
             return self._create_empty_chart(title, height)
-    
-    def _add_simple_pattern_markers(self, fig: go.Figure, patterns: List[PatternResult], data: pd.DataFrame):
-        """Add clean pattern markers to the chart."""
-        try:
-            x_vals = self._get_x_values(data)
-            for pattern in patterns[:15]:  # Limit to 15 patterns for clarity
-                if not hasattr(pattern, 'candle_index') or pattern.candle_index >= len(data):
-                    continue
-                
-                candle_time = x_vals.iloc[pattern.candle_index] if hasattr(x_vals, 'iloc') else x_vals[pattern.candle_index]
-                candle_data = data.iloc[pattern.candle_index]
-                
-                # Get pattern style
-                style = self.pattern_styles.get(
-                    pattern.pattern_type, 
-                    self.default_pattern_style
-                )
-                
-                # Position marker above high with better spacing
-                marker_y = candle_data['high'] * 1.025
-                
-                # Confidence-based size and opacity
-                base_size = style['size']
-                confidence_size = base_size + int(pattern.confidence * 4)  # 0-4 extra pixels
-                opacity = 0.8 + (pattern.confidence * 0.2)  # 0.8 to 1.0
-                
-                fig.add_trace(go.Scatter(
-                    x=[candle_time],
-                    y=[marker_y],
-                    mode='markers',
-                    marker=dict(
-                        symbol=style['symbol'],
-                        size=confidence_size,
-                        color=style['color'],
-                        opacity=opacity,
-                        line=dict(width=2, color='white')  # Better outline
-                    ),
-                    hovertemplate=(
-                        f"<b>{pattern.pattern_type.replace('_', ' ').title()}</b><br>"
-                        f"Confidence: {pattern.confidence:.1%}<br>"
-                        f"Time: {pattern.datetime.strftime('%Y-%m-%d %H:%M')}<br>"
-                        "<extra></extra>"
-                    ),
-                    showlegend=False
-                ))
-                
-        except Exception as e:
-            logger.error(f"Error adding pattern markers: {e}")
-    
-    def add_structural_segments(self, fig: go.Figure, data: pd.DataFrame, segments: List[Dict[str, Any]]):
-        """Overlay structural pattern segments as shaded regions with labels.
-        Each segment dict should include: start_idx, end_idx, pattern_type, confidence, status,
-        and optionally start_dt, end_dt for datetime boundaries.
+
+    def create_pattern_chart(self, data: pd.DataFrame, patterns: List[PatternResult] = None,
+                             title: str = "Stock Pattern Analysis", height: int = 600,
+                             show_volume: bool = True) -> go.Figure:
+        """Compatibility alias for older callers.
+
+        Delegates to create_enhanced_pattern_chart with the same parameters.
         """
-        try:
-            if not segments:
-                return
-            x_vals = self._get_x_values(data)
-            y_min = data['low'].min()
-            y_max = data['high'].max()
-            y_range = y_max - y_min if y_max > y_min else max(1.0, y_max)
-            for seg in segments:
-                try:
-                    s_idx = max(0, int(seg.get('start_idx', 0)))
-                    e_idx = min(len(data) - 1, int(seg.get('end_idx', len(data) - 1)))
-                    if s_idx >= e_idx:
-                        continue
-                    x0 = seg.get('start_dt') if seg.get('start_dt') is not None else (x_vals.iloc[s_idx] if hasattr(x_vals, 'iloc') else x_vals[s_idx])
-                    x1 = seg.get('end_dt') if seg.get('end_dt') is not None else (x_vals.iloc[e_idx] if hasattr(x_vals, 'iloc') else x_vals[e_idx])
-                    label = f"{seg.get('pattern_type','pattern').replace('_',' ').title()}\n{seg.get('confidence',0):.0%} {seg.get('status','')}"
-                    color = {
-                        'head_and_shoulders': 'rgba(244, 67, 54, 0.15)',
-                        'double_top': 'rgba(255, 152, 0, 0.15)',
-                        'double_bottom': 'rgba(76, 175, 80, 0.15)'
-                    }.get(seg.get('pattern_type',''), 'rgba(128,128,128,0.12)')
-                    border_color = {
-                        'head_and_shoulders': 'rgba(244, 67, 54, 0.6)',
-                        'double_top': 'rgba(255, 152, 0, 0.6)',
-                        'double_bottom': 'rgba(76, 175, 80, 0.6)'
-                    }.get(seg.get('pattern_type',''), 'rgba(128,128,128,0.6)')
-                    
-                    fig.add_vrect(x0=x0, x1=x1, fillcolor=color, line_color=border_color, opacity=0.35, layer="below")
-                    # Annotation near top of region
-                    fig.add_annotation(
-                        x=x0, y=y_max - 0.05 * y_range,
-                        xref='x', yref='y',
-                        text=label,
-                        showarrow=False,
-                        font=dict(size=11, color=border_color.replace('0.6','1.0') if isinstance(border_color, str) else '#333')
-                    )
-                except Exception as ie:
-                    logger.warning(f"Failed to draw segment: {ie}")
-        except Exception as e:
-            logger.error(f"Error overlaying structural segments: {e}")
-    
-    def create_structural_chart(
-        self,
-        data: pd.DataFrame,
-        segments: List[Dict[str, Any]],
-        title: str = "Structural Pattern Scan",
-        height: int = 500,
-        max_candles: int = 300
-    ) -> go.Figure:
-        """Create a chart and overlay structural pattern segments."""
-        fig = self.create_simple_chart(data=data, patterns=None, title=title, height=height, max_candles=max_candles)
-        self.add_structural_segments(fig, data, segments)
-        return fig
-    
-    def create_compact_chart(
-        self,
-        data: pd.DataFrame,
-        patterns: List[PatternResult] = None,
-        title: str = "Quick View",
-        height: int = 350
-    ) -> go.Figure:
-        """
-        Create a compact chart for overview display.
-        
-        Args:
-            data: OHLCV DataFrame
-            patterns: List of patterns
-            title: Chart title
-            height: Chart height
-            
-        Returns:
-            Compact chart figure
-        """
-        # Use last 100 candles for compact view
-        return self.create_simple_chart(
+        return self.create_enhanced_pattern_chart(
             data=data,
             patterns=patterns,
             title=title,
             height=height,
-            max_candles=100
+            show_volume=show_volume
         )
     
-    def create_pattern_detail_chart(
-        self,
-        data: pd.DataFrame,
-        pattern: PatternResult,
-        context_candles: int = 20
-    ) -> go.Figure:
-        """
-        Create a focused chart showing a specific pattern with context.
+    def _add_enhanced_candlestick(self, fig: go.Figure, data: pd.DataFrame, row: int = 1):
+        """Add enhanced candlestick chart with better styling."""
+        fig.add_trace(go.Candlestick(
+            x=data.index,
+            open=data['open'],
+            high=data['high'],
+            low=data['low'],
+            close=data['close'],
+            name="Price",
+            increasing_line_color='#111111',
+            decreasing_line_color='#555555',
+            increasing_fillcolor='rgba(0, 0, 0, 0.85)',
+            decreasing_fillcolor='rgba(0, 0, 0, 0.35)',
+            line=dict(width=1.2),
+            showlegend=False
+        ), row=row, col=1)
+    
+    def _add_enhanced_pattern_visualization(self, fig: go.Figure, patterns: List[PatternResult], 
+                                          data: pd.DataFrame, row: int = 1):
+        """Add enhanced pattern component visualization."""
+        for pattern in patterns:
+            pattern_name = pattern.pattern_name
+            
+            if pattern_name == 'Head & Shoulders':
+                self._add_head_shoulders_visualization(fig, pattern, data, row)
+            elif pattern_name == 'Inverse Head & Shoulders':
+                self._add_inverse_head_shoulders_visualization(fig, pattern, data, row)
+            elif pattern_name == 'Double Top':
+                self._add_double_top_visualization(fig, pattern, data, row)
+            elif pattern_name == 'Double Bottom':
+                self._add_double_bottom_visualization(fig, pattern, data, row)
+            
+            # Add pattern period highlight
+            self._add_pattern_period_highlight(fig, pattern, data, row)
+    
+    def _add_head_shoulders_visualization(self, fig: go.Figure, pattern: PatternResult, 
+                                        data: pd.DataFrame, row: int):
+        """Add detailed Head & Shoulders pattern visualization."""
+        style = self.pattern_styles['Head & Shoulders']
         
-        Args:
-            data: OHLCV DataFrame
-            pattern: The pattern to focus on
-            context_candles: Number of candles to show around the pattern
+        if not hasattr(pattern, 'metadata') or not pattern.metadata:
+            return
+        
+        metadata = pattern.metadata
+        
+        # Left Shoulder
+        if 'left_shoulder_idx' in metadata and metadata['left_shoulder_idx'] < len(data):
+            idx = metadata['left_shoulder_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['Left Shoulder'],
+                textposition='top center',
+                textfont=dict(size=10, color=style['left_shoulder']['color']),
+                marker=dict(
+                    size=style['left_shoulder']['size'],
+                    color=style['left_shoulder']['color'],
+                    symbol=style['left_shoulder']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Left Shoulder',
+                showlegend=True,
+                hovertemplate='<b>Left Shoulder</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Head
+        if 'head_idx' in metadata and metadata['head_idx'] < len(data):
+            idx = metadata['head_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['HEAD'],
+                textposition='top center',
+                textfont=dict(size=12, color=style['head']['color']),
+                marker=dict(
+                    size=style['head']['size'],
+                    color=style['head']['color'],
+                    symbol=style['head']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Head',
+                showlegend=True,
+                hovertemplate='<b>Head</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Right Shoulder
+        if 'right_shoulder_idx' in metadata and metadata['right_shoulder_idx'] < len(data):
+            idx = metadata['right_shoulder_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['Right Shoulder'],
+                textposition='top center',
+                textfont=dict(size=10, color=style['right_shoulder']['color']),
+                marker=dict(
+                    size=style['right_shoulder']['size'],
+                    color=style['right_shoulder']['color'],
+                    symbol=style['right_shoulder']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Right Shoulder',
+                showlegend=True,
+                hovertemplate='<b>Right Shoulder</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Neckline
+        if ('left_valley_idx' in metadata and 'right_valley_idx' in metadata and
+            metadata['left_valley_idx'] < len(data) and metadata['right_valley_idx'] < len(data)):
             
-        Returns:
-            Focused pattern chart
-        """
-        try:
-            if not hasattr(pattern, 'candle_index'):
-                return self._create_empty_chart("Pattern Detail", 400)
+            left_idx = metadata['left_valley_idx']
+            right_idx = metadata['right_valley_idx']
             
-            # Extract context around pattern
-            start_idx = max(0, pattern.candle_index - context_candles)
-            end_idx = min(len(data), pattern.candle_index + context_candles + 1)
-            context_data = data.iloc[start_idx:end_idx].copy()
+            fig.add_trace(go.Scatter(
+                x=[data.index[left_idx], data.index[right_idx]],
+                y=[data.iloc[left_idx]['low'], data.iloc[right_idx]['low']],
+                mode='lines+markers',
+                line=dict(
+                    color=style['neckline']['color'],
+                    width=style['neckline']['width'],
+                    dash=style['neckline']['dash']
+                ),
+                marker=dict(size=8, color=style['neckline']['color']),
+                name='Neckline',
+                showlegend=True,
+                hovertemplate='<b>Neckline</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+    
+    def _add_inverse_head_shoulders_visualization(self, fig: go.Figure, pattern: PatternResult, 
+                                                data: pd.DataFrame, row: int):
+        """Add detailed Inverse Head & Shoulders pattern visualization."""
+        style = self.pattern_styles['Inverse Head & Shoulders']
+        
+        if not hasattr(pattern, 'metadata') or not pattern.metadata:
+            return
+        
+        metadata = pattern.metadata
+        
+        # Left Shoulder (for inverse, we use low points)
+        if 'left_shoulder_idx' in metadata and metadata['left_shoulder_idx'] < len(data):
+            idx = metadata['left_shoulder_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['Left Shoulder'],
+                textposition='bottom center',
+                textfont=dict(size=10, color=style['left_shoulder']['color']),
+                marker=dict(
+                    size=style['left_shoulder']['size'],
+                    color=style['left_shoulder']['color'],
+                    symbol=style['left_shoulder']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Left Shoulder',
+                showlegend=True,
+                hovertemplate='<b>Left Shoulder</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Head (lowest point for inverse)
+        if 'head_idx' in metadata and metadata['head_idx'] < len(data):
+            idx = metadata['head_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['HEAD'],
+                textposition='bottom center',
+                textfont=dict(size=12, color=style['head']['color']),
+                marker=dict(
+                    size=style['head']['size'],
+                    color=style['head']['color'],
+                    symbol=style['head']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Head',
+                showlegend=True,
+                hovertemplate='<b>Head</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Right Shoulder
+        if 'right_shoulder_idx' in metadata and metadata['right_shoulder_idx'] < len(data):
+            idx = metadata['right_shoulder_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['Right Shoulder'],
+                textposition='bottom center',
+                textfont=dict(size=10, color=style['right_shoulder']['color']),
+                marker=dict(
+                    size=style['right_shoulder']['size'],
+                    color=style['right_shoulder']['color'],
+                    symbol=style['right_shoulder']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Right Shoulder',
+                showlegend=True,
+                hovertemplate='<b>Right Shoulder</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Neckline (connects peaks for inverse pattern)
+        if ('left_peak_idx' in metadata and 'right_peak_idx' in metadata and
+            metadata['left_peak_idx'] < len(data) and metadata['right_peak_idx'] < len(data)):
             
-            # Adjust pattern index for context data
-            adjusted_pattern = PatternResult(
-                pattern_type=pattern.pattern_type,
-                confidence=pattern.confidence,
-                datetime=pattern.datetime,
-                timeframe=pattern.timeframe,
-                candle_index=pattern.candle_index - start_idx
+            left_idx = metadata['left_peak_idx']
+            right_idx = metadata['right_peak_idx']
+            
+            fig.add_trace(go.Scatter(
+                x=[data.index[left_idx], data.index[right_idx]],
+                y=[data.iloc[left_idx]['high'], data.iloc[right_idx]['high']],
+                mode='lines+markers',
+                line=dict(
+                    color=style['neckline']['color'],
+                    width=style['neckline']['width'],
+                    dash=style['neckline']['dash']
+                ),
+                marker=dict(size=8, color=style['neckline']['color']),
+                name='Neckline',
+                showlegend=True,
+                hovertemplate='<b>Neckline</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+    
+    def _add_double_top_visualization(self, fig: go.Figure, pattern: PatternResult, 
+                                    data: pd.DataFrame, row: int):
+        """Add detailed Double Top pattern visualization."""
+        style = self.pattern_styles['Double Top']
+        
+        if not hasattr(pattern, 'metadata') or not pattern.metadata:
+            return
+        
+        metadata = pattern.metadata
+        
+        # First Top
+        if 'first_peak_idx' in metadata and metadata['first_peak_idx'] < len(data):
+            idx = metadata['first_peak_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['First Top'],
+                textposition='top center',
+                textfont=dict(size=10, color=style['first_top']['color']),
+                marker=dict(
+                    size=style['first_top']['size'],
+                    color=style['first_top']['color'],
+                    symbol=style['first_top']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='First Top',
+                showlegend=True,
+                hovertemplate='<b>First Top</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Second Top
+        if 'second_peak_idx' in metadata and metadata['second_peak_idx'] < len(data):
+            idx = metadata['second_peak_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['Second Top'],
+                textposition='top center',
+                textfont=dict(size=10, color=style['second_top']['color']),
+                marker=dict(
+                    size=style['second_top']['size'],
+                    color=style['second_top']['color'],
+                    symbol=style['second_top']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Second Top',
+                showlegend=True,
+                hovertemplate='<b>Second Top</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Valley between tops
+        if 'valley_idx' in metadata and metadata['valley_idx'] < len(data):
+            idx = metadata['valley_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['Valley'],
+                textposition='bottom center',
+                textfont=dict(size=9, color=style['valley']['color']),
+                marker=dict(
+                    size=style['valley']['size'],
+                    color=style['valley']['color'],
+                    symbol=style['valley']['symbol'],
+                    line=dict(width=1, color='white')
+                ),
+                name='Valley',
+                showlegend=True,
+                hovertemplate='<b>Valley</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+    
+    def _add_double_bottom_visualization(self, fig: go.Figure, pattern: PatternResult, 
+                                       data: pd.DataFrame, row: int):
+        """Add detailed Double Bottom pattern visualization."""
+        style = self.pattern_styles['Double Bottom']
+        
+        if not hasattr(pattern, 'metadata') or not pattern.metadata:
+            return
+        
+        metadata = pattern.metadata
+        
+        # First Bottom
+        if 'first_trough_idx' in metadata and metadata['first_trough_idx'] < len(data):
+            idx = metadata['first_trough_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['First Bottom'],
+                textposition='bottom center',
+                textfont=dict(size=10, color=style['first_bottom']['color']),
+                marker=dict(
+                    size=style['first_bottom']['size'],
+                    color=style['first_bottom']['color'],
+                    symbol=style['first_bottom']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='First Bottom',
+                showlegend=True,
+                hovertemplate='<b>First Bottom</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Second Bottom
+        if 'second_trough_idx' in metadata and metadata['second_trough_idx'] < len(data):
+            idx = metadata['second_trough_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['low']],
+                mode='markers+text',
+                text=['Second Bottom'],
+                textposition='bottom center',
+                textfont=dict(size=10, color=style['second_bottom']['color']),
+                marker=dict(
+                    size=style['second_bottom']['size'],
+                    color=style['second_bottom']['color'],
+                    symbol=style['second_bottom']['symbol'],
+                    line=dict(width=2, color='white')
+                ),
+                name='Second Bottom',
+                showlegend=True,
+                hovertemplate='<b>Second Bottom</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+        
+        # Peak between bottoms
+        if 'peak_idx' in metadata and metadata['peak_idx'] < len(data):
+            idx = metadata['peak_idx']
+            fig.add_trace(go.Scatter(
+                x=[data.index[idx]],
+                y=[data.iloc[idx]['high']],
+                mode='markers+text',
+                text=['Peak'],
+                textposition='top center',
+                textfont=dict(size=9, color=style['peak']['color']),
+                marker=dict(
+                    size=style['peak']['size'],
+                    color=style['peak']['color'],
+                    symbol=style['peak']['symbol'],
+                    line=dict(width=1, color='white')
+                ),
+                name='Peak',
+                showlegend=True,
+                hovertemplate='<b>Peak</b><br>Price: $%{y:.2f}<br>Date: %{x}<extra></extra>'
+            ), row=row, col=1)
+    
+    def _add_pattern_period_highlight(self, fig: go.Figure, pattern: PatternResult, 
+                                    data: pd.DataFrame, row: int):
+        """Add subtle background highlight for pattern period."""
+        if not hasattr(pattern, 'start_idx') or not hasattr(pattern, 'end_idx'):
+            return
+        
+        if pattern.start_idx >= len(data) or pattern.end_idx >= len(data):
+            return
+        
+        start_date = data.index[pattern.start_idx]
+        end_date = data.index[pattern.end_idx]
+        
+        pattern_color = self.pattern_styles.get(pattern.pattern_name, {}).get('color', '#95A5A6')
+        
+        fig.add_vrect(
+            x0=start_date,
+            x1=end_date,
+            fillcolor=pattern_color,
+            opacity=0.1,
+            layer="below",
+            line_width=0,
+            row=row,
+            col=1
+        )
+    
+    def _add_volume_chart(self, fig: go.Figure, data: pd.DataFrame, 
+                         patterns: List[PatternResult], row: int):
+        """Add volume chart with pattern highlights."""
+        if 'volume' not in data.columns:
+            return
+        
+        # Volume bars with color coding
+        colors = ['#26a69a' if close >= open else '#ef5350' 
+                  for close, open in zip(data['close'], data['open'])]
+        
+        fig.add_trace(go.Bar(
+            x=data.index,
+            y=data['volume'],
+            marker_color=colors,
+            name='Volume',
+            opacity=0.7,
+            showlegend=False,
+            hovertemplate='Volume: %{y:,.0f}<br>Date: %{x}<extra></extra>'
+        ), row=row, col=1)
+        
+        # Highlight pattern periods in volume
+        if patterns:
+            for pattern in patterns:
+                if (hasattr(pattern, 'start_idx') and hasattr(pattern, 'end_idx') and
+                    pattern.start_idx < len(data) and pattern.end_idx < len(data)):
+                    
+                    start_date = data.index[pattern.start_idx]
+                    end_date = data.index[pattern.end_idx]
+                    
+                    fig.add_vrect(
+                        x0=start_date,
+                        x1=end_date,
+                        fillcolor="yellow",
+                        opacity=0.2,
+                        layer="below",
+                        line_width=0,
+                        row=row,
+                        col=1
+                    )
+    
+    def _apply_enhanced_layout(self, fig: go.Figure, title: str, height: int, rows: int):
+        """Apply enhanced layout settings."""
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=18, color='#111111'),
+                pad=dict(t=20)
+            ),
+            height=height,
+            margin=dict(l=60, r=60, t=100, b=60),
+            plot_bgcolor='#FFFFFF',
+            paper_bgcolor='#FFFFFF',
+            font=dict(family="Inter, Arial, sans-serif", size=12, color='#111111'),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            hovermode='x unified'
+        )
+
+        # Price chart axes
+        fig.update_xaxes(
+            type='date',
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(0, 0, 0, 0.08)',
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(0, 0, 0, 0.15)',
+            rangeslider=dict(visible=False),
+            rangebreaks=[dict(bounds=["sat", "mon"])],
+            row=1,
+            col=1
+        )
+
+        fig.update_yaxes(
+            title="Price",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(0, 0, 0, 0.08)',
+            showline=True,
+            linewidth=1,
+            linecolor='rgba(0, 0, 0, 0.15)',
+            row=1,
+            col=1
+        )
+
+        # Volume chart axes (if present)
+        if rows == 2:
+            fig.update_xaxes(
+                type='date',
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(0, 0, 0, 0.08)',
+                row=2,
+                col=1
             )
-            
-            title = f"{pattern.pattern_type.replace('_', ' ').title()} - {pattern.confidence:.1%} Confidence"
-            
-            return self.create_simple_chart(
-                data=context_data,
-                patterns=[adjusted_pattern],
-                title=title,
-                height=400,
-                max_candles=len(context_data)
+
+            fig.update_yaxes(
+                title="Volume",
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(0, 0, 0, 0.08)',
+                row=2,
+                col=1
             )
-            
-        except Exception as e:
-            logger.error(f"Error creating pattern detail chart: {e}")
-            return self._create_empty_chart("Pattern Detail", 400)
+    
+    def create_compact_chart(self, data: pd.DataFrame, patterns: List[PatternResult] = None,
+                           title: str = "Preview", height: int = 300) -> go.Figure:
+        """Create a compact chart for previews."""
+        return self.create_enhanced_pattern_chart(
+            data=data,
+            patterns=patterns,
+            title=title,
+            height=height,
+            show_volume=False
+        )
     
     def _create_empty_chart(self, title: str, height: int) -> go.Figure:
         """Create an empty chart with a message."""
         fig = go.Figure()
         fig.add_annotation(
             text="No data available",
-            x=0.5,
-            y=0.5,
-            xref="paper",
-            yref="paper",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
             showarrow=False,
             font=dict(size=16, color="gray")
         )
         fig.update_layout(
             title=title,
             height=height,
-            showlegend=False,
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
+            template="plotly_white"
         )
         return fig
+
+    def _ensure_datetime_index(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Return a copy with datetime index if 'datetime' column exists, else original.
+
+        This avoids UI errors when upstream code passes data without setting the index.
+        """
+        try:
+            if 'datetime' in data.columns:
+                df = data.copy()
+                df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+                df = df.dropna(subset=['datetime'])
+                df = df.set_index('datetime')
+                df = df.sort_index()
+                return df
+        except Exception:
+            pass
+        return data
